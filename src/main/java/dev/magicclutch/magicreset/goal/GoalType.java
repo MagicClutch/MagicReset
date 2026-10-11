@@ -2,6 +2,8 @@ package dev.magicclutch.magicreset.goal;
 
 public enum GoalType {
     NONE(false, false),
+    /** Beat the game: leave the end through the exit portal (after the dragon was killed). */
+    BEAT_GAME(false, false),
     /** Kill an entity type, e.g. minecraft:ender_dragon. */
     KILL_ENTITY(true, true),
     /** Travel through a portal into a dimension: nether, end or overworld. */

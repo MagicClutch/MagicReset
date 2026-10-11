@@ -13,7 +13,15 @@ worlds:
   # A reset deletes only the three game folders (a paper-world.yml inside them is kept).
   # Changing the namespace requires a restart and starts with fresh worlds.
   namespace: magicreset
-  # Generate a nether / an end for every run.
+  # true: the server's real nether and end (minecraft:the_nether / minecraft:the_end, stored in
+  #       <level-name>/dimensions/minecraft/the_nether|the_end) are the game dimensions and are deleted and
+  #       regenerated on every reset - the vanilla end with its dragon fight starts fresh.
+  # false: the plugin creates its own nether/end (<namespace>:the_nether / <namespace>:the_end) and the
+  #        server's nether/end are never touched.
+  # The main overworld (minecraft:overworld) can never be unloaded while the server runs, so the game
+  # overworld is always <namespace>:overworld. Changing this needs a restart.
+  use-main-nether-end: true
+  # Which dimensions are part of the game and deleted on every reset (also /magicreset worlds).
   nether: true
   end: true
   # NORMAL, FLAT, LARGE_BIOMES or AMPLIFIED
@@ -98,7 +106,8 @@ timer:
   update-interval: 1
 
 goal:
-  # NONE, KILL_ENTITY, ENTER_DIMENSION, ADVANCEMENT, BREAK_BLOCK or OBTAIN_ITEM
+  # NONE, BEAT_GAME, KILL_ENTITY, ENTER_DIMENSION, ADVANCEMENT, BREAK_BLOCK or OBTAIN_ITEM
+  # BEAT_GAME = "Beat Minecraft": leave the end through the exit portal after killing the dragon (no target)
   type: KILL_ENTITY
   # KILL_ENTITY: an entity (minecraft:ender_dragon, minecraft:wither, ...)
   # ENTER_DIMENSION: minecraft:the_nether, minecraft:the_end or minecraft:overworld

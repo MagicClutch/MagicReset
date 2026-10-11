@@ -37,7 +37,8 @@ public final class MagicReset extends JavaPlugin {
         this.saveDefaultConfig();
         this.loadSettings();
 
-        this.worlds = new GameWorlds(this.getLogger(), this::settings, this.settings.worlds().namespace());
+        this.worlds = new GameWorlds(this.getLogger(), this::settings, this.settings.worlds().namespace(),
+            this.settings.worlds().useMainNetherEnd());
         this.timers = new TimerService(() -> {
             Settings.Timer timer = this.settings.timer();
             return new TimerService.TimerSettings(timer.mode(), timer.scope(), timer.start(), timer.igtPauseWhenEmpty());
@@ -117,9 +118,11 @@ public final class MagicReset extends JavaPlugin {
      */
     public @Nullable String reload() {
         String oldNamespace = this.settings.worlds().namespace();
+        boolean oldMainNetherEnd = this.settings.worlds().useMainNetherEnd();
         this.loadSettings();
-        if (!oldNamespace.equals(this.settings.worlds().namespace())) {
-            return "worlds.namespace changed: restart the server to apply it";
+        if (!oldNamespace.equals(this.settings.worlds().namespace())
+            || oldMainNetherEnd != this.settings.worlds().useMainNetherEnd()) {
+            return "worlds.namespace / worlds.use-main-nether-end changed: restart the server to apply it";
         }
         return null;
     }

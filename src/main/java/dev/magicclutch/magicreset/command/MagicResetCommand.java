@@ -26,9 +26,11 @@ import dev.magicclutch.magicreset.timer.TimerScope;
 import dev.magicclutch.magicreset.timer.TimerService;
 import dev.magicclutch.magicreset.util.Durations;
 import dev.magicclutch.magicreset.util.TimeFormat;
+import dev.magicclutch.magicreset.world.GameWorlds;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -48,6 +50,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
+import org.bukkit.World;
 import org.bukkit.advancement.Advancement;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -98,6 +101,7 @@ public final class MagicResetCommand {
             .then(this.timerNode())
             .then(this.goalNode())
             .then(this.deathsNode())
+            .then(this.worldsNode())
             .then(this.autoResetNode())
             .then(Commands.literal("scoreboard").requires(permission("scoreboard")).executes(this::toggleScoreboard))
             .then(Commands.literal("radar").requires(permission("radar")).executes(this::toggleRadar))
@@ -373,6 +377,7 @@ public final class MagicResetCommand {
         return Commands.literal("goal").requires(permission("goal"))
             .executes(this::showGoal)
             .then(Commands.literal("none").executes(ctx -> this.setGoal(ctx, Goal.NONE)))
+            .then(Commands.literal("beat").executes(ctx -> this.setGoal(ctx, new Goal(GoalType.BEAT_GAME, null, 1))))
             .then(Commands.literal("dragon").executes(ctx ->
                 this.setGoal(ctx, new Goal(GoalType.KILL_ENTITY, NamespacedKey.minecraft("ender_dragon"), 1))))
             .then(this.targetGoal("kill", GoalType.KILL_ENTITY, entities))
@@ -428,6 +433,56 @@ public final class MagicResetCommand {
     // ---------------------------------------------------------------------------------------------------------
     // deaths
     // ---------------------------------------------------------------------------------------------------------
+
+    // ---------------------------------------------------------------------------------------------------------
+    // worlds
+    // ---------------------------------------------------------------------------------------------------------
+
+    private LiteralArgumentBuilder<CommandSourceStack> worldsNode() {
+        return Commands.literal("worlds").requires(permission("worlds"))
+            .executes(this::listWorlds)
+            .then(Commands.literal("nether")
+                .then(Commands.literal("on").executes(ctx -> this.selectWorld(ctx, "worlds.nether", true)))
+                .then(Commands.literal("off").executes(ctx -> this.selectWorld(ctx, "worlds.nether", false))))
+            .then(Commands.literal("end")
+                .then(Commands.literal("on").executes(ctx -> this.selectWorld(ctx, "worlds.end", true)))
+                .then(Commands.literal("off").executes(ctx -> this.selectWorld(ctx, "worlds.end", false))));
+    }
+
+    private int selectWorld(CommandContext<CommandSourceStack> ctx, String path, boolean enabled) {
+        this.plugin.setConfigValue(path, enabled);
+        return this.listWorlds(ctx);
+    }
+
+    /** Shows which worlds a reset deletes and where they are stored. */
+    private int listWorlds(CommandContext<CommandSourceStack> ctx) {
+        CommandSender sender = sender(ctx);
+        GameWorlds worlds = this.plugin.worlds();
+        Path serverRoot = Path.of("").toAbsolutePath();
+        this.messages().send(sender, "worlds.header");
+        for (GameWorlds.Dimension dimension : GameWorlds.Dimension.values()) {
+            String folder;
+            try {
+                Path absolute = worlds.folder(dimension).toAbsolutePath().normalize();
+                folder = absolute.startsWith(serverRoot) ? serverRoot.relativize(absolute).toString() : absolute.toString();
+            } catch (IllegalStateException e) {
+                folder = "?";
+            }
+            boolean enabled = worlds.isEnabled(dimension);
+            World loaded = worlds.world(dimension);
+            this.messages().send(sender, "worlds.entry",
+                Placeholder.component("dimension", this.messages().get("dimension." + dimension.path().replace('_', '-'))),
+                Placeholder.unparsed("key", worlds.key(dimension).asString()),
+                Placeholder.unparsed("folder", folder.replace('\\', '/')),
+                Placeholder.component("status", this.messages().get(enabled ? "worlds.status-reset" : "worlds.status-kept")),
+                Placeholder.component("loaded", this.messages().get(loaded != null ? "worlds.loaded" : "worlds.not-loaded")));
+        }
+        this.messages().send(sender, "worlds.footer", Placeholder.unparsed("key", worlds.key(GameWorlds.Dimension.OVERWORLD).asString()));
+        if (sender instanceof Player player) {
+            this.messages().send(player, "worlds.you-are-in", Placeholder.unparsed("key", player.getWorld().getKey().asString()));
+        }
+        return Command.SINGLE_SUCCESS;
+    }
 
     private LiteralArgumentBuilder<CommandSourceStack> deathsNode() {
         return Commands.literal("deaths").requires(permission("deaths"))

@@ -30,6 +30,7 @@ public final class Settings {
 
     public record Worlds(
         String namespace,
+        boolean useMainNetherEnd,
         boolean nether,
         boolean end,
         WorldType type,
@@ -131,6 +132,7 @@ public final class Settings {
         }
         this.worlds = new Worlds(
             namespace,
+            config.getBoolean("worlds.use-main-nether-end", true),
             config.getBoolean("worlds.nether", true),
             config.getBoolean("worlds.end", true),
             this.worldType(config.getString("worlds.type", "NORMAL")),
@@ -229,7 +231,7 @@ public final class Settings {
     private Goal readGoal(FileConfiguration config) {
         GoalType type = this.enumValue(GoalType.class, config.getString("goal.type"), GoalType.KILL_ENTITY, "goal.type");
         if (!type.needsTarget()) {
-            return Goal.NONE;
+            return type == GoalType.NONE ? Goal.NONE : new Goal(type, null, 1);
         }
         String rawTarget = config.getString("goal.target", "");
         NamespacedKey target = rawTarget == null ? null : NamespacedKey.fromString(rawTarget.toLowerCase(Locale.ROOT));

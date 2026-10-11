@@ -165,7 +165,7 @@ public final class GoalService implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onWorldChange(PlayerChangedWorldEvent event) {
         Goal current = this.goal();
-        if (current.type() != GoalType.ENTER_DIMENSION) {
+        if (current.type() != GoalType.ENTER_DIMENSION && current.type() != GoalType.BEAT_GAME) {
             return;
         }
         Player player = event.getPlayer();
@@ -178,7 +178,12 @@ public final class GoalService implements Listener {
         if (from == null || to == null) {
             return; // limbo transfers do not count
         }
-        if (current.matches(dimensionKey(to))) {
+        if (current.type() == GoalType.BEAT_GAME) {
+            // the only way out of the end without dying is the exit portal that appears after the dragon fight
+            if (from == GameWorlds.Dimension.END && to == GameWorlds.Dimension.OVERWORLD) {
+                this.advance(player, 1);
+            }
+        } else if (current.matches(dimensionKey(to))) {
             this.advance(player, 1);
         }
     }
@@ -252,7 +257,7 @@ public final class GoalService implements Listener {
      */
     public static @Nullable String validate(GoalType type, NamespacedKey target) {
         return switch (type) {
-            case NONE -> null;
+            case NONE, BEAT_GAME -> null;
             case KILL_ENTITY -> {
                 EntityType entity = Registry.ENTITY_TYPE.get(target);
                 yield entity != null && entity.isAlive() ? null : "goal.invalid-entity";
@@ -273,6 +278,9 @@ public final class GoalService implements Listener {
     /** Human readable description, e.g. "Kill the Ender Dragon". */
     public Component describe(Goal current) {
         Messages text = this.messages.get();
+        if (current.type() == GoalType.BEAT_GAME) {
+            return text.get("goal.describe.beat-game");
+        }
         if (current.isNone() || current.target() == null) {
             return text.get("goal.describe.none");
         }
@@ -306,7 +314,7 @@ public final class GoalService implements Listener {
                 Material material = Registry.MATERIAL.get(target);
                 yield material == null ? Component.text(target.asString()) : Component.translatable(material.translationKey());
             }
-            case NONE -> Component.empty();
+            case NONE, BEAT_GAME -> Component.empty();
         };
     }
 

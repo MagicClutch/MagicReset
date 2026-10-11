@@ -18,6 +18,7 @@ permissions:
       magicreset.command.timer: true
       magicreset.command.goal: true
       magicreset.command.deaths: true
+      magicreset.command.worlds: true
       magicreset.command.autoreset: true
       magicreset.command.radar: true
       magicreset.command.reload: true
@@ -46,6 +47,9 @@ permissions:
     default: op
   magicreset.command.deaths:
     description: Change the death rules.
+    default: op
+  magicreset.command.worlds:
+    description: Show and choose the worlds a reset deletes.
     default: op
   magicreset.command.autoreset:
     description: Schedule automatic resets.

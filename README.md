@@ -39,32 +39,36 @@ a sidebar and a player radar.
 1. Download `MagicReset-<version>.jar` from the [releases](../../releases) ("Latest build" is always the newest
    version of `main`).
 2. Put it into `plugins/` and start the server. The first world is generated automatically.
-3. Optional: disable the vanilla nether and end, they are not used by the game
-   (`allow-nether=false` in `server.properties`, `settings.allow-end: false` in `bukkit.yml`).
 
 ## How the worlds are stored
 
-Since 26.1 every dimension lives inside the main level folder. MagicReset creates its own dimensions with the
-namespace from `worlds.namespace` (default `magicreset`):
+Since 26.1 every dimension lives inside the main level folder (`level-name` in `server.properties`):
 
 ```
-world/                                  <- level-name from server.properties
+world/
 ├── dimensions/
-│   ├── minecraft/overworld|the_nether|the_end   <- vanilla worlds, never touched
+│   ├── minecraft/
+│   │   ├── overworld/    <- server's main overworld: cannot be unloaded while the server runs, never touched
+│   │   ├── the_nether/   <- game nether: deleted and regenerated on every reset
+│   │   └── the_end/      <- game end:    deleted and regenerated on every reset (dragon fight starts fresh)
 │   └── magicreset/
-│       ├── overworld/    region/ entities/ poi/ data/ [paper-world.yml]   <- wiped on reset
-│       ├── the_nether/   ...                                                <- wiped on reset
-│       ├── the_end/      ...                                                <- wiped on reset
-│       └── limbo/        ...                                                <- kept
-├── players/                            <- player data, never deleted (players are reset via the API)
-└── data/                               <- shared data, never deleted
+│       ├── overworld/    <- game overworld: deleted and regenerated on every reset
+│       └── limbo/        <- waiting room, kept
+├── players/              <- player data, never deleted (players are reset via the API)
+└── data/                 <- shared data, never deleted
 ```
 
-A reset deletes exactly the three game dimension folders. A `paper-world.yml` inside them is kept, so per-world
-Paper settings survive resets. The main overworld stays loaded (the server needs it), players never see it.
+- **Nether and End are the server's real dimensions** (`minecraft:the_nether`, `minecraft:the_end`) and are really
+  deleted on every reset (`worlds.use-main-nether-end: true`, the default). Set it to `false` to use separate
+  plugin dimensions instead.
+- **The overworld is a plugin world** (`magicreset:overworld`). The server's main overworld can never be unloaded
+  while the server runs, so it cannot be reset without a restart. Players never see it.
+- `/magicreset worlds` lists exactly which worlds a reset deletes (with their folders) and where you are;
+  `/magicreset worlds nether|end on|off` chooses whether nether/end are part of the game.
+- A `paper-world.yml` inside a game dimension folder is kept, so per-world Paper settings survive resets.
 
-Nether portals and end portals inside the game worlds are linked to each other (coordinate scaling, portal
-search/creation and the obsidian platform work like in vanilla), so the vanilla nether/end are not needed.
+Nether portals and end portals of the game worlds are linked to each other (coordinate scaling, portal
+search/creation and the obsidian platform work like in vanilla).
 
 ## Commands
 
@@ -86,7 +90,8 @@ Main command `/magicreset`, alias `/mr`. `/reset` is registered as a shortcut fo
 | `/mr timer scope global\|individual` | Shared or personal timers. |
 | `/mr timer trigger auto\|first-input\|manual` | When the timer starts. |
 | `/mr goal` | Show the goal and progress. |
-| `/mr goal none\|dragon` | No goal / kill the Ender Dragon. |
+| `/mr goal none\|beat\|dragon` | No goal / Beat Minecraft (leave the End through the exit portal) / kill the Ender Dragon. |
+| `/mr worlds [nether\|end on\|off]` | Show which worlds a reset deletes, choose nether/end. |
 | `/mr goal kill <entity> [amount]` | Kill an entity. |
 | `/mr goal dimension nether\|end\|overworld` | Travel through a portal into a dimension. |
 | `/mr goal advancement <advancement>` | Get an advancement. |
@@ -114,6 +119,7 @@ Settings changed by commands are written back into `config.yml` (comments are ke
 | `magicreset.command.timer` | op | Timer control. |
 | `magicreset.command.goal` | op | Goal settings. |
 | `magicreset.command.deaths` | op | Death rules. |
+| `magicreset.command.worlds` | op | Show and choose the reset worlds. |
 | `magicreset.command.autoreset` | op | Scheduled resets. |
 | `magicreset.command.radar` | op | Toggle the radar. |
 | `magicreset.command.reload` | op | Reload. |

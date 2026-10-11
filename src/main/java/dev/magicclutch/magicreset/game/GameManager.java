@@ -80,6 +80,7 @@ public final class GameManager {
     }
 
     private static final String DATA_FILE = "data.yml";
+    private static final int LIMBO_VIEW_DISTANCE = 3;
     private static final Sound TICK_SOUND = Sound.sound(Key.key("minecraft:block.note_block.hat"), Sound.Source.MASTER, 1f, 1f);
     private static final Sound GO_SOUND = Sound.sound(Key.key("minecraft:block.note_block.pling"), Sound.Source.MASTER, 1f, 2f);
     private static final Sound COMPLETE_SOUND = Sound.sound(Key.key("minecraft:ui.toast.challenge_complete"), Sound.Source.MASTER, 1f, 1f);
@@ -147,6 +148,17 @@ public final class GameManager {
             return false;
         }
         this.limboSpawn = this.worlds.limboSpawn(limbo);
+        // keep the limbo loaded all the time so moving players there is instant
+        int spawnChunkX = this.limboSpawn.getBlockX() >> 4;
+        int spawnChunkZ = this.limboSpawn.getBlockZ() >> 4;
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                limbo.getChunkAt(spawnChunkX + dx, spawnChunkZ + dz).addPluginChunkTicket(this.plugin);
+            }
+        }
+        // it is an empty void, a small view distance lets clients finish loading it almost immediately
+        limbo.setViewDistance(LIMBO_VIEW_DISTANCE);
+        limbo.setSimulationDistance(LIMBO_VIEW_DISTANCE);
         Phase previous = this.savedPhase;
 
         boolean worldsOnDisk = this.worlds.hasSavedData(GameWorlds.Dimension.OVERWORLD);
@@ -259,7 +271,7 @@ public final class GameManager {
         this.snapshots.clear();
         this.saveAsync();
 
-        this.messages().send(Bukkit.getServer(), "reset.started");
+        this.messages().send(Bukkit.getServer(), "reset.started", Placeholder.unparsed("worlds", this.resetWorldList()));
         this.showBossBar(this.messages().get("bossbar.moving"), 0f, BossBar.Color.PURPLE);
         for (Player player : Bukkit.getOnlinePlayers()) {
             this.sendToLimbo(player);
@@ -283,6 +295,9 @@ public final class GameManager {
         boolean unloaded = true;
         try {
             for (GameWorlds.Dimension dimension : GameWorlds.Dimension.values()) {
+                if (!this.worlds.isEnabled(dimension)) {
+                    continue; // only the selected worlds are deleted (/magicreset worlds)
+                }
                 World world = this.worlds.world(dimension);
                 // the path of a loaded world comes straight from the server, the fallback is derived from the layout
                 folders.put(dimension, world != null ? world.getWorldPath() : this.worlds.folder(dimension));
@@ -304,10 +319,18 @@ public final class GameManager {
         }
 
         this.showBossBar(this.messages().get("bossbar.deleting"), 0.15f, BossBar.Color.PURPLE);
+        List<Path> leftovers = this.worlds.leftoverFolders();
         // give the chunk system a moment to release the region files before deleting them
         Bukkit.getScheduler().runTaskLater(this.plugin, () -> CompletableFuture.runAsync(() -> {
             for (Map.Entry<GameWorlds.Dimension, Path> entry : folders.entrySet()) {
                 this.wipeWithRetry(entry.getKey(), entry.getValue());
+            }
+            for (Path leftover : leftovers) {
+                try {
+                    this.worlds.wipeLeftover(leftover);
+                } catch (IOException e) {
+                    this.plugin.getLogger().warning("Could not delete the unused folder " + leftover + ": " + e.getMessage());
+                }
             }
         }, this.io).whenComplete((ignored, error) -> Bukkit.getScheduler().runTask(this.plugin, () -> {
             if (error != null) {
@@ -912,6 +935,17 @@ public final class GameManager {
         for (Player player : Bukkit.getOnlinePlayers()) {
             player.hideBossBar(this.bossBar);
         }
+    }
+
+    /** "magicreset:overworld, minecraft:the_nether, minecraft:the_end" – the worlds a reset deletes. */
+    public String resetWorldList() {
+        List<String> keys = new ArrayList<>();
+        for (GameWorlds.Dimension dimension : GameWorlds.Dimension.values()) {
+            if (this.worlds.isEnabled(dimension)) {
+                keys.add(this.worlds.key(dimension).asString());
+            }
+        }
+        return String.join(", ", keys);
     }
 
     public String formatPrecise(long millis) {
