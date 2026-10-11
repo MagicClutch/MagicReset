@@ -77,8 +77,9 @@ reset:
   # then moves everybody straight into it - no limbo, no waiting. The limbo is only used when nothing is
   # preloaded (yet), for a reset with a different seed, or for the first world. If the seed or world
   # settings change, the preloaded world is thrown away and generated again with the new settings.
-  # The old worlds are still backed up and deleted after the reset; nether/end are regenerated then.
-  preload: true
+  # The old worlds are still backed up and deleted after the reset; nether/end are regenerated then
+  # (only the overworld is preloaded). Off by default.
+  preload: false
   # Seconds after a run started before the next overworld is generated (avoids lag at the start).
   preload-delay: 15
   # Also register /reset as a shortcut for /magicreset reset (needs a restart).

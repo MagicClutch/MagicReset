@@ -32,8 +32,8 @@ a sidebar and a locator bar switch.
 - **Leaderboard** – the fastest times per goal and timer mode with name and date, shown as the sidebar in the limbo
   (`/mr leaderboard`). Stored in `plugins/MagicReset/leaderboard.yml`.
 - **Sidebar** with run number, time, goal progress, deaths and lives (toggle per player with `/mr scoreboard`).
-- **Preloaded next world** – the next overworld is generated in the background (`reset.preload`), so a reset moves
-  everybody straight into it without the limbo. Changed seed or world settings regenerate it automatically.
+- **Preloaded next world** (optional, off by default) – with `reset.preload: true` the next overworld is generated in
+  the background, so a reset moves everybody straight into it without the limbo. Changed seed or world settings regenerate it automatically.
 - **Locator bar** – `worlds.locator-bar` / `/mr locatorbar on|off` switches the vanilla locator bar in the game worlds.
 - All texts are in English and fully editable in `messages.yml` (MiniMessage).
 

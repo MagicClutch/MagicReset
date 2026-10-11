@@ -179,7 +179,7 @@ public final class Settings {
             Math.max(0, config.getInt("reset.limbo-countdown", 5)),
             config.getBoolean("reset.shortcut-command", true),
             config.getBoolean("reset.clear-scoreboard-scores", false),
-            config.getBoolean("reset.preload", true),
+            config.getBoolean("reset.preload", false),
             Math.max(0, config.getInt("reset.preload-delay", 15)),
             new PlayerReset(
                 config.getBoolean("reset.player.clear-inventory", true),
