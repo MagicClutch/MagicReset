@@ -1,0 +1,61 @@
+name: MagicReset
+version: '${version}'
+main: dev.magicclutch.magicreset.MagicReset
+api-version: '26.2'
+description: Resets the game worlds without restarting the server - limbo, seed selection, speedrun timer and goals.
+authors: [MagicClutch]
+website: https://github.com/MagicClutch/MagicReset
+
+permissions:
+  magicreset.admin:
+    description: Full access to MagicReset.
+    default: op
+    children:
+      magicreset.command.use: true
+      magicreset.command.reset: true
+      magicreset.command.limbo: true
+      magicreset.command.seed: true
+      magicreset.command.timer: true
+      magicreset.command.goal: true
+      magicreset.command.deaths: true
+      magicreset.command.autoreset: true
+      magicreset.command.radar: true
+      magicreset.command.reload: true
+      magicreset.command.scoreboard: true
+      magicreset.limbo.bypass: true
+  magicreset.command.use:
+    description: Use /magicreset (help and status).
+    default: true
+  magicreset.command.scoreboard:
+    description: Toggle your own sidebar with /magicreset scoreboard.
+    default: true
+  magicreset.command.reset:
+    description: Reset the worlds and cancel countdowns.
+    default: op
+  magicreset.command.limbo:
+    description: Pause the run in limbo and resume it.
+    default: op
+  magicreset.command.seed:
+    description: Show and change the seed settings.
+    default: op
+  magicreset.command.timer:
+    description: Control the timer.
+    default: op
+  magicreset.command.goal:
+    description: Change the goal.
+    default: op
+  magicreset.command.deaths:
+    description: Change the death rules.
+    default: op
+  magicreset.command.autoreset:
+    description: Schedule automatic resets.
+    default: op
+  magicreset.command.radar:
+    description: Toggle the player radar.
+    default: op
+  magicreset.command.reload:
+    description: Reload config.yml and messages.yml.
+    default: op
+  magicreset.limbo.bypass:
+    description: Build and interact inside the limbo.
+    default: op

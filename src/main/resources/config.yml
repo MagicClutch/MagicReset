@@ -1,0 +1,144 @@
+# ======================================================================================
+#  MagicReset - configuration
+#  Most settings can also be changed in-game with /magicreset; those commands write back
+#  into this file. Use /magicreset reload after editing it by hand.
+# ======================================================================================
+
+worlds:
+  # The game worlds are stored inside the main level folder (level-name in server.properties):
+  #   <level-name>/dimensions/<namespace>/overworld
+  #   <level-name>/dimensions/<namespace>/the_nether
+  #   <level-name>/dimensions/<namespace>/the_end
+  #   <level-name>/dimensions/<namespace>/limbo        (never reset)
+  # A reset deletes only the three game folders (a paper-world.yml inside them is kept).
+  # Changing the namespace requires a restart and starts with fresh worlds.
+  namespace: magicreset
+  # Generate a nether / an end for every run.
+  nether: true
+  end: true
+  # NORMAL, FLAT, LARGE_BIOMES or AMPLIFIED
+  type: NORMAL
+  generate-structures: true
+  bonus-chest: false
+  # Show hardcore hearts in the game worlds (purely visual, see "deaths" for the rules).
+  hardcore-hearts: false
+  # PEACEFUL, EASY, NORMAL or HARD
+  difficulty: NORMAL
+  # World border diameter in blocks, 0 keeps the vanilla border.
+  world-border: 0
+  # Game rules applied to every new game world, e.g.
+  #   minecraft:keep_inventory: false
+  #   minecraft:players_sleeping_percentage: 50
+  game-rules: {}
+
+seed:
+  # RANDOM: a new random seed every reset. FIXED: always use the seed below.
+  # "/magicreset reset <seed>" overrides this for a single reset.
+  mode: RANDOM
+  # Numbers are used as-is, text is converted like in vanilla.
+  fixed: ''
+
+spawn:
+  # Search radius (blocks) around the world spawn for a dry, solid spawn point.
+  safe-search-radius: 96
+  # Chunks around the spawn that are generated before the players are released.
+  preload-radius: 3
+
+reset:
+  # Countdown (seconds) before the players are moved to limbo. 0 = instant.
+  countdown: 5
+  # Countdown (seconds) in limbo after the new world is ready.
+  limbo-countdown: 5
+  # Also register /reset as a shortcut for /magicreset reset (needs a restart).
+  shortcut-command: true
+  # Reset all scores of the main scoreboard (vanilla /scoreboard objectives) on every reset.
+  clear-scoreboard-scores: false
+  # What happens to every player when a new run starts.
+  player:
+    clear-inventory: true
+    clear-ender-chest: true
+    reset-health: true
+    reset-hunger: true
+    reset-experience: true
+    clear-effects: true
+    revoke-advancements: true
+    revoke-recipes: false
+    reset-respawn-point: true
+    game-mode: SURVIVAL
+
+limbo:
+  # The void world players wait in while the worlds are regenerated or the run is paused.
+  platform-block: BLACK_STAINED_GLASS
+  platform-radius: 4
+  platform-height: 100
+  game-mode: ADVENTURE
+
+timer:
+  # RTA = real time (wall clock, keeps running even when nobody is online)
+  # IGT = in-game play time (counts server ticks while players are in the game)
+  mode: RTA
+  # GLOBAL = one shared timer, the first player to reach the goal stops it.
+  # INDIVIDUAL = every player has an own timer that stops when they reach the goal.
+  scope: GLOBAL
+  # AUTO = starts when the players enter the new world
+  # FIRST_INPUT = starts on the first movement or interaction
+  # MANUAL = only with /magicreset timer start
+  start: AUTO
+  # IGT only: stop counting while no player is in the game worlds.
+  igt-pause-when-empty: true
+  # Fractional digits shown in the action bar (0-3). Chat output always uses 3.
+  decimals: 2
+  # DIGITAL = 1:02:03.45   TEXT = 1h 02m 03.45s
+  style: DIGITAL
+  # Show the timer in the action bar.
+  action-bar: true
+  # Show "00:00.00" before the timer started.
+  show-when-idle: true
+  # Action bar refresh rate in ticks (1 = every tick).
+  update-interval: 1
+
+goal:
+  # NONE, KILL_ENTITY, ENTER_DIMENSION, ADVANCEMENT, BREAK_BLOCK or OBTAIN_ITEM
+  type: KILL_ENTITY
+  # KILL_ENTITY: an entity (minecraft:ender_dragon, minecraft:wither, ...)
+  # ENTER_DIMENSION: minecraft:the_nether, minecraft:the_end or minecraft:overworld
+  # ADVANCEMENT: an advancement (minecraft:story/enter_the_end, ...)
+  # BREAK_BLOCK / OBTAIN_ITEM: a block / item (minecraft:diamond_ore, minecraft:diamond, ...)
+  target: minecraft:ender_dragon
+  # How often (KILL_ENTITY, BREAK_BLOCK) or how many (OBTAIN_ITEM).
+  amount: 1
+  # Put players into spectator mode when they finished.
+  spectator-on-finish: false
+  # Seconds after the run is completed until an automatic reset, -1 = never.
+  reset-after: -1
+
+deaths:
+  # OFF = deaths are only counted
+  # HARDCORE = the first death fails the run
+  # SHARED_LIVES = all players share "shared-lives" lives
+  mode: OFF
+  shared-lives: 3
+  # Put everybody into spectator mode when the run failed.
+  spectator-on-fail: true
+  # Seconds after a failed run until an automatic reset, -1 = never.
+  reset-after: 10
+
+auto-reset:
+  # Seconds before a scheduled reset at which a warning is broadcast.
+  warnings: [3600, 1800, 600, 300, 60, 30, 10, 5, 4, 3, 2, 1]
+
+scoreboard:
+  # Show the sidebar to players who did not toggle it with /magicreset scoreboard.
+  # The sidebar uses its own scoreboard, so teams/objectives of the main scoreboard are
+  # not visible to players who have it enabled.
+  enabled-by-default: true
+  update-interval: 10
+
+radar:
+  # Show the nearest player (name, distance, direction) next to the timer.
+  # Can also be toggled with /magicreset radar.
+  enabled: false
+  # Only while holding a compass.
+  require-compass: true
+  # Maximum distance in blocks, 0 = unlimited.
+  max-distance: 0

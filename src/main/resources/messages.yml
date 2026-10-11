@@ -1,0 +1,191 @@
+# ======================================================================================
+#  MagicReset - messages
+#  Format: MiniMessage (https://docs.advntr.dev/minimessage/format.html)
+#  <prefix> can be used in every message. An empty message ('') is not sent.
+# ======================================================================================
+
+prefix: '<gradient:#a855f7:#6366f1><bold>MagicReset</bold></gradient> <dark_gray>»</dark_gray> '
+
+players-only: '<prefix><red>Only players can use this command.'
+invalid-duration: '<prefix><red>Invalid time. Examples: <white>90</white>, <white>45s</white>, <white>1h30m</white>, <white>1:02:03.5</white>'
+reloaded: '<prefix><green>Configuration and messages reloaded.'
+reload-warning: '<prefix><yellow><warning>'
+
+dimension:
+  overworld: 'Overworld'
+  the-nether: 'Nether'
+  the-end: 'End'
+
+reset:
+  started: '<prefix><gray>Resetting the world...'
+  ready: '<prefix><green>The new world is ready. <gray>Seed: <white><seed>'
+  failed: '<prefix><red>The reset failed: <white><reason></white>. Everyone stays in limbo, try <white>/magicreset reset</white> again.'
+  already-resetting: '<prefix><red>A reset is already in progress.'
+  countdown-started: '<prefix><gray>The world resets in <white><seconds></white> seconds. <dark_gray>(/magicreset cancel)'
+
+countdown:
+  none: '<prefix><red>There is no countdown to cancel.'
+  cancelled: '<prefix><yellow>The countdown was cancelled.'
+  reset:
+    title: '<gradient:#a855f7:#6366f1><bold><seconds></bold></gradient>'
+    subtitle: '<gray>World reset'
+    chat: '<prefix><gray>World reset in <white><seconds></white>...'
+  start:
+    title: '<green><bold><seconds></bold>'
+    subtitle: '<gray>Get ready!'
+    chat: ''
+  pause:
+    title: '<yellow><bold><seconds></bold>'
+    subtitle: '<gray>Pausing the run'
+    chat: '<prefix><gray>Pausing in <white><seconds></white>...'
+  resume:
+    title: '<green><bold><seconds></bold>'
+    subtitle: '<gray>The run continues'
+    chat: ''
+
+bossbar:
+  moving: '<light_purple>Moving everyone to limbo...'
+  deleting: '<light_purple>Deleting the old world...'
+  generating: '<aqua>Generating the <dimension>...'
+  spawn: '<aqua>Looking for a safe spawn...'
+  ready: '<green>The new world is ready!'
+  paused: '<yellow>The run is paused'
+  failed: '<red>The reset failed - waiting for an admin'
+
+title:
+  go: '<gradient:#22c55e:#10b981><bold>GO!</bold></gradient>'
+  go-subtitle: '<gray>Goal: <white><goal>'
+  resumed: '<green><bold>Resumed'
+  completed: '<gold><bold>Goal complete!'
+  completed-subtitle: '<white><player></white> <gray>in</gray> <white><time>'
+  failed: '<red><bold>Run failed'
+  failed-subtitle: '<white><player></white> <gray>died after</gray> <white><time>'
+
+pause:
+  paused: '<prefix><yellow>The run is paused. <gray>Your progress is saved.'
+  resumed: '<prefix><green>The run continues!'
+  already-paused: '<prefix><red>The run is already paused.'
+  not-running: '<prefix><red>There is no running game to pause right now.'
+  not-paused: '<prefix><red>The run is not paused.'
+  no-world: '<prefix><red>There is no game world to return to. Use <white>/magicreset reset</white>.'
+
+goal:
+  current: '<prefix><gray>Goal: <white><goal></white> <dark_gray>(<progress>)'
+  changed: '<prefix><green>New goal: <white><goal>'
+  invalid-entity: '<prefix><red><target> is not a living entity.'
+  invalid-dimension: '<prefix><red><target> is not a dimension.'
+  invalid-advancement: '<prefix><red><target> is not an advancement.'
+  invalid-block: '<prefix><red><target> is not a block.'
+  invalid-item: '<prefix><red><target> is not an item.'
+  completed:
+    global: '<prefix><gold><bold><player></bold></gold> <gray>completed the goal in</gray> <white><time></white><gray>!'
+    individual: '<prefix><gold><player></gold> <gray>finished in</gray> <white><time></white><gray>!'
+    all: '<prefix><green>Everyone has finished!'
+  describe:
+    none: 'None'
+    kill-entity: 'Kill <count><target>'
+    enter-dimension: 'Enter the <target>'
+    advancement: 'Get <target>'
+    break-block: 'Mine <count><target>'
+    obtain-item: 'Collect <count><target>'
+
+deaths:
+  life-lost: '<prefix><red><player></red> <gray>died. Lives left: <white><lives>'
+  failed: '<prefix><red><bold>Run failed!</bold></red> <gray><player> died after <white><time></white>.'
+  status-off: '<prefix><gray>Death rules: <white>off</white> <dark_gray>(<deaths> deaths this run)'
+  status-hardcore: '<prefix><gray>Death rules: <red>hardcore</red> <dark_gray>- the first death fails the run'
+  status-lives: '<prefix><gray>Death rules: <white>shared lives</white> <dark_gray>- <lives>/<max> left'
+
+seed:
+  current: '<prefix><gray>Current seed: <white><seed></white> <dark_gray>(next reset: <mode>)'
+  click-to-copy: '<gray>Click to copy'
+  mode-random: '<prefix><green>Every reset now uses a random seed.'
+  mode-fixed: '<prefix><green>Every reset now uses the seed <white><seed></white>.'
+  copied: '<prefix><green>The current seed <white><seed></white> is now the fixed seed.'
+
+timer:
+  started: '<prefix><green>Timer started.'
+  paused: '<prefix><yellow>Timer paused.'
+  resumed: '<prefix><green>Timer resumed.'
+  reset: '<prefix><gray>Timer reset.'
+  set: '<prefix><gray>Timer set to <white><time></white>.'
+  mode-changed: '<prefix><gray>Timer mode: <white><mode>'
+  scope-changed: '<prefix><gray>Timer scope: <white><scope>'
+  trigger-changed: '<prefix><gray>Timer start: <white><trigger>'
+  status: '<prefix><gray>Timer <white><state></white> <dark_gray>|</dark_gray> RTA <white><rta></white> <dark_gray>|</dark_gray> IGT <white><igt></white> <dark_gray>|</dark_gray> showing <white><mode></white>, <white><scope></white>, start <white><trigger>'
+
+hud:
+  separator: '  <dark_gray>|</dark_gray>  '
+  resetting: '<light_purple>Generating a new world...'
+  paused: '<yellow>⏸ Paused</yellow> <gray><time>'
+  timer:
+    running: '<gradient:#facc15:#f97316><bold><time></bold></gradient>'
+    paused: '<yellow>⏸ <bold><time></bold>'
+    finished: '<green>✔ <bold><time></bold>'
+    failed: '<red>✘ <bold><time></bold>'
+    waiting: '<gray>Move to start the timer'
+    idle: '<gray><bold><time></bold>'
+  radar:
+    target: '<aqua><arrow></aqua> <white><player></white> <gray><distance>m'
+    none: '<gray>No player nearby'
+
+radar:
+  enabled: '<prefix><green>Radar enabled.'
+  disabled: '<prefix><gray>Radar disabled.'
+
+scoreboard:
+  shown: '<prefix><green>Sidebar shown.'
+  hidden: '<prefix><gray>Sidebar hidden.'
+  title: '<gradient:#a855f7:#6366f1><bold>MagicReset</bold></gradient>'
+  status:
+    resetting: '<light_purple>Resetting'
+    paused: '<yellow>Paused'
+    running: '<green>Running'
+    completed: '<gold>Completed'
+    failed: '<red>Failed'
+  lines:
+    - '<dark_gray>Run #<run>'
+    - ''
+    - '<gray>Time <white><time>'
+    - '<gray>Status <status>'
+    - ' '
+    - '<gray>Goal'
+    - '<white><goal>'
+    - '<gray>Progress <white><progress>'
+    - '  '
+    - '<gray>Deaths <white><deaths>'
+    - '<gray>Lives <white><lives>'
+    - '<gray>Players <white><players>'
+
+auto-reset:
+  warning: '<prefix><gray>Scheduled reset in <white><time></white>.'
+  now: '<prefix><gray>Scheduled reset!'
+  disabled: '<prefix><gray>Automatic resets disabled.'
+  invalid-time: '<prefix><red>Use a time like <white>18:00</white> or <white>18:00 loop</white>.'
+  status-off: '<prefix><gray>No automatic reset is scheduled.'
+  status: '<prefix><gray>Automatic reset <white><schedule></white> <dark_gray>|</dark_gray> repeat: <white><loop></white> <dark_gray>|</dark_gray> next in <white><remaining></white> <dark_gray>(<next>)'
+
+status:
+  - '<gradient:#a855f7:#6366f1><bold>MagicReset</bold></gradient> <dark_gray>- run #<run>'
+  - '<gray>Phase: <white><phase></white> <dark_gray>(<outcome>)'
+  - '<gray>Seed: <white><seed></white> <dark_gray>(mode: <seed-mode>)'
+  - '<gray>Timer: <white><time></white> <dark_gray>(<timer-mode>, <scope>)'
+  - '<gray>Goal: <white><goal>'
+  - '<gray>Deaths: <white><deaths></white> <dark_gray>(rules: <death-mode>)'
+  - '<gray>Auto reset: <white><auto-reset>'
+  - '<gray>Paused players: <white><paused-players></white> <dark_gray>|</dark_gray> radar: <white><radar>'
+
+help:
+  - '<gradient:#a855f7:#6366f1><bold>MagicReset</bold></gradient> <dark_gray>- commands (alias /mr)'
+  - '<white>/magicreset reset <gray>[seed|random|same] [countdown] [limbo-countdown]'
+  - '<white>/magicreset cancel <gray>- cancel a running countdown'
+  - '<white>/magicreset limbo <gray>[countdown] - pause/continue the run in limbo'
+  - '<white>/magicreset resume <gray>[countdown]'
+  - '<white>/magicreset seed <gray>[random | fixed \<seed> | copy]'
+  - '<white>/magicreset timer <gray>[start|pause|resume|reset|set \<time>|mode|scope|trigger]'
+  - '<white>/magicreset goal <gray>[none|dragon|kill|dimension|advancement|break|item]'
+  - '<white>/magicreset deaths <gray>[off|hardcore|lives \<n>]'
+  - '<white>/magicreset autoreset <gray>[off | in \<duration> [loop] | at \<HH:mm> [loop]]'
+  - '<white>/magicreset scoreboard <gray>- toggle your sidebar'
+  - '<white>/magicreset radar <gray>- toggle the player radar'
+  - '<white>/magicreset status <gray>| <white>reload'
