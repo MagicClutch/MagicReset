@@ -20,6 +20,8 @@ import org.bukkit.Registry;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.block.Block;
+import org.bukkit.entity.EnderPearl;
+import org.bukkit.entity.Entity;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -179,7 +181,13 @@ public final class GameWorlds {
             .generateStructures(config.generateStructures())
             .bonusChest(dimension == Dimension.OVERWORLD && config.bonusChest())
             .hardcore(config.hardcoreHearts());
-        World world = Bukkit.createWorld(creator);
+        World world;
+        try {
+            world = Bukkit.createWorld(creator);
+        } catch (RuntimeException e) {
+            this.logger.log(Level.SEVERE, "Failed to create world " + this.key(dimension), e);
+            return null;
+        }
         if (world == null) {
             this.logger.severe("Failed to create world " + this.key(dimension));
             return null;
@@ -228,6 +236,8 @@ public final class GameWorlds {
         if (world == null) {
             return true;
         }
+        // thrown pearls belong to their owner and would follow them into the new world with the same key
+        world.getEntitiesByClass(EnderPearl.class).forEach(Entity::remove);
         return Bukkit.unloadWorld(world, false);
     }
 
@@ -259,7 +269,12 @@ public final class GameWorlds {
                 .environment(World.Environment.NORMAL)
                 .generator(new VoidGenerator(this.settings.get().limbo().platformHeight()))
                 .generateStructures(false);
-            limbo = Bukkit.createWorld(creator);
+            try {
+                limbo = Bukkit.createWorld(creator);
+            } catch (RuntimeException e) {
+                this.logger.log(Level.SEVERE, "Failed to create the limbo world " + this.limboKey(), e);
+                return null;
+            }
             if (limbo == null) {
                 this.logger.log(Level.SEVERE, "Failed to create the limbo world " + this.limboKey());
                 return null;
@@ -275,7 +290,6 @@ public final class GameWorlds {
         limbo.setGameRule(GameRules.SPAWN_WANDERING_TRADERS, false);
         limbo.setGameRule(GameRules.SHOW_DEATH_MESSAGES, false);
         limbo.setGameRule(GameRules.SHOW_ADVANCEMENT_MESSAGES, false);
-        limbo.setTime(6000L);
         limbo.setStorm(false);
         limbo.setThundering(false);
         this.buildPlatform(limbo);

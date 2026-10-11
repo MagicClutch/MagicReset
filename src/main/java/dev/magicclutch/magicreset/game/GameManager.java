@@ -111,6 +111,10 @@ public final class GameManager {
     private @Nullable CountdownKind countdownKind;
     private final BossBar bossBar = BossBar.bossBar(Component.empty(), 0f, BossBar.Color.PURPLE, BossBar.Overlay.PROGRESS);
     private @Nullable ConfigurationSection loadedExtra;
+    /** The last reset failed half way; the old run cannot be continued. */
+    private boolean resetFailed;
+    /** The new world is generated, players are only waiting for the limbo countdown. */
+    private boolean awaitingRelease;
     private Phase savedPhase = Phase.RESETTING;
 
     public GameManager(MagicReset plugin, GameWorlds worlds, TimerService timers, GoalService goals) {
@@ -146,7 +150,8 @@ public final class GameManager {
         Phase previous = this.savedPhase;
 
         boolean worldsOnDisk = this.worlds.hasSavedData(GameWorlds.Dimension.OVERWORLD);
-        if (previous == Phase.RESETTING || !worldsOnDisk || this.run == 0) {
+        boolean readyWorld = previous == Phase.RESETTING && this.awaitingRelease;
+        if ((previous == Phase.RESETTING && !readyWorld) || this.resetFailed || !worldsOnDisk || this.run == 0) {
             this.plugin.getLogger().info(worldsOnDisk && this.run > 0
                 ? "The last reset did not finish, generating a new world"
                 : "No game world found, generating the first world");
@@ -165,10 +170,14 @@ public final class GameManager {
         if (this.spawn == null && overworld != null) {
             this.spawn = overworld.getSpawnLocation().toCenterLocation();
         }
+        this.spawn = this.spawn(); // attach the loaded world for the async join check
         this.phase = switch (previous) {
-            case PAUSED, RESUMING -> Phase.PAUSED;
+            case PAUSED, RESUMING, RESETTING -> Phase.PAUSED;
             default -> Phase.RUNNING;
         };
+        if (readyWorld) {
+            this.plugin.getLogger().info("The server stopped during the limbo countdown, use /magicreset resume to start the run");
+        }
         if (this.phase == Phase.PAUSED) {
             this.showBossBar(this.messages().get("bossbar.paused"), 1f, BossBar.Color.YELLOW);
         }
@@ -357,7 +366,7 @@ public final class GameManager {
         }
         this.showBossBar(this.messages().get("bossbar.spawn"), 0.8f, BossBar.Color.BLUE);
         SpawnFinder.find(overworld, this.settings().spawn().safeSearchRadius())
-            .thenCompose(found -> SpawnFinder.preload(found, this.settings().spawn().preloadRadius()).thenApply(ignored -> found))
+            .thenCompose(found -> SpawnFinder.preload(this.plugin, found, this.settings().spawn().preloadRadius()).thenApply(ignored -> found))
             .whenComplete((found, error) -> Bukkit.getScheduler().runTask(this.plugin, () -> {
                 Location target = found;
                 if (error != null || target == null) {
@@ -371,9 +380,14 @@ public final class GameManager {
     private void finishReset(long newSeed, Location newSpawn, int limboCountdown) {
         World overworld = newSpawn.getWorld();
         overworld.setSpawnLocation(newSpawn);
+        if (this.settings().worlds().borderSize() > 0) {
+            overworld.getWorldBorder().setCenter(newSpawn.getBlockX() + 0.5, newSpawn.getBlockZ() + 0.5);
+        }
         this.spawn = newSpawn.clone();
         this.seed = newSeed;
         this.run++;
+        this.resetFailed = false;
+        this.awaitingRelease = true;
         this.saveAsync();
         this.plugin.getLogger().info("Run #" + this.run + " is ready (seed " + newSeed + ")");
 
@@ -390,6 +404,11 @@ public final class GameManager {
 
     private void startRun() {
         this.phase = Phase.RUNNING;
+        this.awaitingRelease = false;
+        World overworld = this.worlds.overworld();
+        if (overworld != null) {
+            overworld.removePluginChunkTickets(this.plugin);
+        }
         this.hideBossBar();
         List<Player> participantsNow = new ArrayList<>();
         for (Player player : Bukkit.getOnlinePlayers()) {
@@ -407,6 +426,7 @@ public final class GameManager {
         this.messages().send(Bukkit.getServer(), "reset.failed", Placeholder.unparsed("reason", reason));
         // keep everyone safe in limbo; an admin can retry with /magicreset reset
         this.phase = Phase.PAUSED;
+        this.resetFailed = true;
         this.showBossBar(this.messages().get("bossbar.failed"), 1f, BossBar.Color.RED);
         this.saveAsync();
     }
@@ -496,6 +516,12 @@ public final class GameManager {
         if (!this.worlds.isGameWorld(player.getWorld()) || this.snapshots.containsKey(player.getUniqueId()) || player.isDead()) {
             return false;
         }
+        Integer playerRun = this.participants.get(player.getUniqueId());
+        if (playerRun == null || playerRun != this.run) {
+            return false; // gear from an older run is never carried into this one
+        }
+        // puts cursor and crafting-grid items back into the inventory so the snapshot contains them
+        player.closeInventory();
         this.snapshots.put(player.getUniqueId(), PlayerSnapshot.capture(player));
         return true;
     }
@@ -504,12 +530,15 @@ public final class GameManager {
         if (this.phase != Phase.PAUSED) {
             return "pause.not-paused";
         }
-        if (this.worlds.overworld() == null || this.spawn() == null) {
+        if (this.resetFailed || this.worlds.overworld() == null || this.spawn() == null) {
             return "pause.no-world";
         }
         if (countdown <= 0) {
             this.resume();
             return null;
+        }
+        if (this.cancelCountdown(false)) {
+            this.messages().send(Bukkit.getServer(), "countdown.cancelled");
         }
         this.phase = Phase.RESUMING;
         this.startCountdown(null, countdown,
@@ -526,7 +555,12 @@ public final class GameManager {
             player.showTitle(Title.title(this.messages().get("title.resumed"), Component.empty(), COUNTDOWN_TIMES));
             player.playSound(GO_SOUND);
         }
-        this.timers.resumeAll();
+        if (!this.timers.isArmed()) {
+            // the run was never released (server restarted during the limbo countdown)
+            this.timers.begin(List.copyOf(Bukkit.getOnlinePlayers()));
+        } else {
+            this.timers.resumeAll();
+        }
         this.saveAsync();
         this.messages().send(Bukkit.getServer(), "pause.resumed");
     }
@@ -542,6 +576,7 @@ public final class GameManager {
                 player.teleport(location);
             }
             snapshot.apply(player);
+            this.timers.onParticipantJoin(player);
             this.saveAsync();
             return;
         }
@@ -748,7 +783,12 @@ public final class GameManager {
         if (seconds < 0) {
             return;
         }
-        this.requestReset(null, seconds, this.settings().reset().limboCountdown());
+        // one tick later: this can be called from inside PlayerDeathEvent
+        Bukkit.getScheduler().runTask(this.plugin, () -> {
+            if (this.phase == Phase.RUNNING && this.outcome != Outcome.NONE) {
+                this.requestReset(null, seconds, this.settings().reset().limboCountdown());
+            }
+        });
     }
 
     // ------------------------------------------------------------------------------------------------------------
@@ -808,7 +848,9 @@ public final class GameManager {
                 } else {
                     this.timers.onParticipantJoin(player);
                 }
-                if (this.outcome == Outcome.FAILED && this.settings().deaths().spectatorOnFail() && this.worlds.isGameWorld(player.getWorld())) {
+                boolean spectate = (this.outcome == Outcome.FAILED && this.settings().deaths().spectatorOnFail())
+                    || (this.outcome == Outcome.COMPLETED && this.settings().goal().spectatorOnFinish());
+                if (spectate && this.worlds.isGameWorld(player.getWorld())) {
                     player.setGameMode(GameMode.SPECTATOR);
                 }
             }
@@ -959,10 +1001,15 @@ public final class GameManager {
         try {
             data.load(file);
         } catch (IOException | InvalidConfigurationException e) {
-            this.plugin.getLogger().log(Level.SEVERE, "Could not read " + DATA_FILE + ", starting with a fresh state", e);
+            File backup = new File(file.getParentFile(), DATA_FILE + ".corrupt-" + System.currentTimeMillis());
+            boolean moved = file.renameTo(backup);
+            this.plugin.getLogger().log(Level.SEVERE, "Could not read " + DATA_FILE + ", starting with a fresh state"
+                + (moved ? " (the old file was kept as " + backup.getName() + ")" : ""), e);
             return Phase.RESETTING;
         }
         this.run = data.getInt("run", 0);
+        this.awaitingRelease = data.getBoolean("awaiting-release");
+        this.resetFailed = data.getBoolean("reset-failed");
         this.seed = data.getLong("seed");
         this.deaths = data.getInt("deaths");
         try {
@@ -1021,6 +1068,8 @@ public final class GameManager {
         Phase persisted = this.phase == Phase.COUNTDOWN ? this.phaseBeforeCountdown : this.phase;
         data.set("phase", persisted.name());
         data.set("outcome", this.outcome.name());
+        data.set("awaiting-release", this.awaitingRelease);
+        data.set("reset-failed", this.resetFailed);
         data.set("run", this.run);
         data.set("seed", this.seed);
         data.set("deaths", this.deaths);
@@ -1063,8 +1112,11 @@ public final class GameManager {
         try {
             // keep the order with pending background writes
             this.io.submit(() -> this.write(content)).get(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         } catch (Exception e) {
-            this.write(content);
+            // the write stays queued behind the backlog, writing here could be overwritten by older content
+            this.plugin.getLogger().warning("Saving " + DATA_FILE + " is slow, it continues in the background");
         }
     }
 
@@ -1072,9 +1124,13 @@ public final class GameManager {
         Path target = this.dataFile().toPath();
         try {
             Files.createDirectories(target.getParent());
-            Path temp = target.resolveSibling(DATA_FILE + ".tmp");
-            Files.writeString(temp, content, StandardCharsets.UTF_8);
-            Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            Path temp = Files.createTempFile(target.getParent(), DATA_FILE, ".tmp");
+            try {
+                Files.writeString(temp, content, StandardCharsets.UTF_8);
+                Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } finally {
+                Files.deleteIfExists(temp);
+            }
         } catch (IOException e) {
             this.plugin.getLogger().log(Level.SEVERE, "Could not save " + DATA_FILE, e);
         }

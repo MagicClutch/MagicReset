@@ -29,6 +29,7 @@ public record PlayerSnapshot(
     float pitch,
     GameMode gameMode,
     double health,
+    double absorption,
     int food,
     float saturation,
     float exhaustion,
@@ -57,6 +58,7 @@ public record PlayerSnapshot(
             location.getX(), location.getY(), location.getZ(), location.getYaw(), location.getPitch(),
             player.getGameMode(),
             player.getHealth(),
+            player.getAbsorptionAmount(),
             player.getFoodLevel(),
             player.getSaturation(),
             player.getExhaustion(),
@@ -82,9 +84,14 @@ public record PlayerSnapshot(
     /** Restores everything except the location (teleporting is up to the caller). */
     public void apply(Player player) {
         player.setGameMode(this.gameMode);
+        // inventory and effects first: armor attributes and Health Boost raise the maximum health
+        player.getInventory().setContents(Arrays.copyOf(this.inventory, player.getInventory().getSize()));
+        player.getActivePotionEffects().forEach(effect -> player.removePotionEffect(effect.getType()));
+        player.addPotionEffects(this.effects);
         AttributeInstance maxHealth = player.getAttribute(Attribute.MAX_HEALTH);
         double cap = maxHealth == null ? 20d : maxHealth.getValue();
         player.setHealth(Math.clamp(this.health, 0.5d, cap));
+        player.setAbsorptionAmount(this.absorption);
         player.setFoodLevel(this.food);
         player.setSaturation(this.saturation);
         player.setExhaustion(this.exhaustion);
@@ -97,9 +104,6 @@ public record PlayerSnapshot(
         player.setFallDistance(this.fallDistance);
         player.setAllowFlight(this.allowFlight || this.gameMode == GameMode.CREATIVE || this.gameMode == GameMode.SPECTATOR);
         player.setFlying(this.flying && player.getAllowFlight());
-        player.getActivePotionEffects().forEach(effect -> player.removePotionEffect(effect.getType()));
-        player.addPotionEffects(this.effects);
-        player.getInventory().setContents(Arrays.copyOf(this.inventory, player.getInventory().getSize()));
         player.updateInventory();
     }
 
@@ -112,6 +116,7 @@ public record PlayerSnapshot(
         section.set("pitch", this.pitch);
         section.set("game-mode", this.gameMode.name());
         section.set("health", this.health);
+        section.set("absorption", this.absorption);
         section.set("food", this.food);
         section.set("saturation", this.saturation);
         section.set("exhaustion", this.exhaustion);
@@ -160,6 +165,7 @@ public record PlayerSnapshot(
             (float) section.getDouble("yaw"), (float) section.getDouble("pitch"),
             gameMode,
             section.getDouble("health", 20d),
+            section.getDouble("absorption"),
             section.getInt("food", 20),
             (float) section.getDouble("saturation", 5d),
             (float) section.getDouble("exhaustion"),

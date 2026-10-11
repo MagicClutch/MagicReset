@@ -9,6 +9,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.plugin.Plugin;
 
 /**
  * Finds a dry, solid spawn position near the world spawn so nobody starts in an ocean or a lava lake.
@@ -89,7 +90,10 @@ public final class SpawnFinder {
     }
 
     private static boolean isClear(Block block) {
-        return block.isPassable() && !block.isLiquid() && block.getType() != Material.POWDER_SNOW && block.getType() != Material.FIRE;
+        Material type = block.getType();
+        return block.isPassable() && !block.isLiquid()
+            && type != Material.POWDER_SNOW && type != Material.FIRE && type != Material.SOUL_FIRE
+            && type != Material.COBWEB && type != Material.SWEET_BERRY_BUSH;
     }
 
     private static Location centered(Location origin) {
@@ -113,14 +117,16 @@ public final class SpawnFinder {
     }
 
     /** Generates the chunks around {@code center} so players do not arrive in unloaded terrain. */
-    public static CompletableFuture<Void> preload(Location center, int radius) {
+    public static CompletableFuture<Void> preload(Plugin plugin, Location center, int radius) {
         World world = center.getWorld();
         int cx = center.getBlockX() >> 4;
         int cz = center.getBlockZ() >> 4;
         List<CompletableFuture<?>> futures = new ArrayList<>();
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
-                futures.add(world.getChunkAtAsync(cx + dx, cz + dz, true, false));
+                // the ticket keeps the chunks loaded through the limbo countdown, removed when the run starts
+                futures.add(world.getChunkAtAsync(cx + dx, cz + dz, true, false)
+                    .thenAccept(chunk -> chunk.addPluginChunkTicket(plugin)));
             }
         }
         return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).exceptionally(error -> null);
