@@ -101,11 +101,18 @@ timer:
   # GLOBAL = one shared timer, the first player to reach the goal stops it.
   # INDIVIDUAL = every player has an own timer that stops when they reach the goal.
   scope: GLOBAL
-  # AUTO = starts when the players enter the new world
-  # FIRST_INPUT = starts on the first movement or interaction
+  # When the timer starts (also /magicreset timer start-on-move on|off):
+  # AUTO = as soon as the players enter the new world
+  # FIRST_INPUT = only when a player moves (or jumps/sneaks/interacts) for the first time,
+  #               standing still after the countdown does not count
   # MANUAL = only with /magicreset timer start
   start: AUTO
-  # IGT only: stop counting while no player is in the game worlds.
+  # Stop the timer (RTA and IGT) while nobody is playing - e.g. everybody disconnected - and continue it
+  # when someone is back. With start: FIRST_INPUT it continues on their first movement.
+  # In INDIVIDUAL scope each player's timer stops while that player is offline.
+  # Also /magicreset timer stop-when-empty on|off.
+  stop-when-empty: false
+  # IGT only: stop counting while no player is in the game worlds (independent of stop-when-empty).
   igt-pause-when-empty: true
   # Fractional digits shown in the action bar (0-3). Chat output always uses 3.
   decimals: 2

@@ -300,6 +300,12 @@ public final class MagicResetCommand {
             .then(Commands.literal("scope")
                 .then(Commands.literal("global").executes(ctx -> this.setTimerScope(ctx, TimerScope.GLOBAL)))
                 .then(Commands.literal("individual").executes(ctx -> this.setTimerScope(ctx, TimerScope.INDIVIDUAL))))
+            .then(Commands.literal("stop-when-empty")
+                .then(Commands.literal("on").executes(ctx -> this.setStopWhenEmpty(ctx, true)))
+                .then(Commands.literal("off").executes(ctx -> this.setStopWhenEmpty(ctx, false))))
+            .then(Commands.literal("start-on-move")
+                .then(Commands.literal("on").executes(ctx -> this.setTrigger(ctx, StartTrigger.FIRST_INPUT)))
+                .then(Commands.literal("off").executes(ctx -> this.setTrigger(ctx, StartTrigger.AUTO))))
             .then(Commands.literal("trigger")
                 .then(Commands.literal("auto").executes(ctx -> this.setTrigger(ctx, StartTrigger.AUTO)))
                 .then(Commands.literal("first-input").executes(ctx -> this.setTrigger(ctx, StartTrigger.FIRST_INPUT)))
@@ -352,6 +358,12 @@ public final class MagicResetCommand {
         this.plugin.setConfigValue("timer.scope", scope.name());
         this.game.saveAsync();
         this.messages().send(sender(ctx), "timer.scope-changed", Placeholder.unparsed("scope", scope.name()));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int setStopWhenEmpty(CommandContext<CommandSourceStack> ctx, boolean enabled) {
+        this.plugin.setConfigValue("timer.stop-when-empty", enabled);
+        this.messages().send(sender(ctx), enabled ? "timer.stop-when-empty-on" : "timer.stop-when-empty-off");
         return Command.SINGLE_SUCCESS;
     }
 

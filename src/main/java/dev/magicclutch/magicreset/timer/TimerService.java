@@ -2,7 +2,9 @@ package dev.magicclutch.magicreset.timer;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 import org.bukkit.configuration.ConfigurationSection;
@@ -26,8 +28,13 @@ public final class TimerService {
     /** {@code true} once the run has ended (goal completed or failed); no new timers start. */
     private boolean ended;
 
-    public record TimerSettings(TimerMode mode, TimerScope scope, StartTrigger trigger, boolean igtPauseWhenEmpty) {
+    public record TimerSettings(TimerMode mode, TimerScope scope, StartTrigger trigger, boolean igtPauseWhenEmpty, boolean stopWhenEmpty) {
     }
+
+    /** Global timer stopped because nobody was playing (timer.stop-when-empty). */
+    private boolean globalAutoPaused;
+    /** Individual timers stopped because their player left (timer.stop-when-empty). */
+    private final Set<UUID> autoPaused = new HashSet<>();
 
     public TimerService(Supplier<TimerSettings> settings) {
         this.settings = settings;
@@ -50,6 +57,8 @@ public final class TimerService {
         this.global = new RunTimer();
         this.individual.clear();
         this.armed = false;
+        this.globalAutoPaused = false;
+        this.autoPaused.clear();
         this.started = false;
         this.paused = false;
         this.ended = false;
@@ -96,15 +105,78 @@ public final class TimerService {
         if (!this.armed || this.settings().trigger() != StartTrigger.FIRST_INPUT) {
             return;
         }
-        RunTimer timer = this.scope() == TimerScope.GLOBAL ? this.global : this.timer(player.getUniqueId());
+        boolean global = this.scope() == TimerScope.GLOBAL;
+        RunTimer timer = global ? this.global : this.timer(player.getUniqueId());
         if (!this.ended && timer.state() == RunTimer.State.IDLE) {
             this.started = true;
+            timer.start();
+        } else if (global ? this.globalAutoPaused : this.autoPaused.contains(player.getUniqueId())) {
+            // back after everybody had left: continue on the first movement, like at the start
+            this.clearAutoPause(player.getUniqueId());
             timer.start();
         }
     }
 
     public boolean isWaitingForInput(Player player) {
-        return this.armed && this.settings().trigger() == StartTrigger.FIRST_INPUT && this.displayed(player).state() == RunTimer.State.IDLE;
+        if (!this.armed || this.settings().trigger() != StartTrigger.FIRST_INPUT) {
+            return false;
+        }
+        boolean autoPausedNow = this.scope() == TimerScope.GLOBAL ? this.globalAutoPaused : this.autoPaused.contains(player.getUniqueId());
+        return this.displayed(player).state() == RunTimer.State.IDLE || autoPausedNow;
+    }
+
+    /**
+     * timer.stop-when-empty: stops the timer while nobody (global) or the player (individual) is playing and
+     * continues it when they are back - immediately, or on the first movement with the FIRST_INPUT start.
+     *
+     * @param inGame players currently playing in the game worlds
+     */
+    public void updatePresence(Collection<? extends Player> inGame) {
+        TimerSettings config = this.settings();
+        if (!config.stopWhenEmpty()) {
+            // switched off while something was stopped: continue it
+            if (this.globalAutoPaused) {
+                this.globalAutoPaused = false;
+                this.global.start();
+            }
+            this.autoPaused.forEach(uuid -> this.timer(uuid).start());
+            this.autoPaused.clear();
+            return;
+        }
+        boolean resumeOnJoin = config.trigger() != StartTrigger.FIRST_INPUT;
+        if (config.scope() == TimerScope.GLOBAL) {
+            if (inGame.isEmpty() && this.global.isRunning()) {
+                this.global.pause();
+                this.globalAutoPaused = true;
+            } else if (!inGame.isEmpty() && this.globalAutoPaused && resumeOnJoin) {
+                this.globalAutoPaused = false;
+                this.global.start();
+            }
+            return;
+        }
+        Set<UUID> present = new HashSet<>();
+        inGame.forEach(player -> present.add(player.getUniqueId()));
+        this.individual.forEach((uuid, timer) -> {
+            if (!present.contains(uuid) && timer.isRunning()) {
+                timer.pause();
+                this.autoPaused.add(uuid);
+            } else if (present.contains(uuid) && resumeOnJoin && this.autoPaused.remove(uuid)) {
+                timer.start();
+            }
+        });
+    }
+
+    private void clearAutoPause(UUID player) {
+        if (this.scope() == TimerScope.GLOBAL) {
+            this.globalAutoPaused = false;
+        } else {
+            this.autoPaused.remove(player);
+        }
+    }
+
+    /** {@code true} while the timer shown to this player is stopped because nobody was playing. */
+    public boolean isAutoPaused(Player player) {
+        return this.scope() == TimerScope.GLOBAL ? this.globalAutoPaused : this.autoPaused.contains(player.getUniqueId());
     }
 
     /**
@@ -164,12 +236,17 @@ public final class TimerService {
 
     public void pauseAll() {
         this.paused = true;
+        // an explicit pause replaces the automatic one, only an explicit resume continues
+        this.globalAutoPaused = false;
+        this.autoPaused.clear();
         this.global.pause();
         this.individual.values().forEach(RunTimer::pause);
     }
 
     public void resumeAll() {
         this.paused = false;
+        this.globalAutoPaused = false;
+        this.autoPaused.clear();
         if (this.global.state() == RunTimer.State.PAUSED) {
             this.global.start();
         }
@@ -211,6 +288,8 @@ public final class TimerService {
         section.set("started", this.started);
         section.set("paused", this.paused);
         section.set("ended", this.ended);
+        section.set("auto-paused-global", this.globalAutoPaused);
+        section.set("auto-paused-players", this.autoPaused.stream().map(UUID::toString).toList());
         this.global.save(section.createSection("global"));
         ConfigurationSection players = section.createSection("players");
         this.individual.forEach((uuid, timer) -> timer.save(players.createSection(uuid.toString())));
@@ -225,6 +304,14 @@ public final class TimerService {
         this.started = section.getBoolean("started", this.armed);
         this.paused = section.getBoolean("paused");
         this.ended = section.getBoolean("ended");
+        this.globalAutoPaused = section.getBoolean("auto-paused-global");
+        for (String raw : section.getStringList("auto-paused-players")) {
+            try {
+                this.autoPaused.add(UUID.fromString(raw));
+            } catch (IllegalArgumentException ignored) {
+                // skip malformed entries
+            }
+        }
         this.global = RunTimer.load(section.getConfigurationSection("global"));
         ConfigurationSection players = section.getConfigurationSection("players");
         if (players != null) {

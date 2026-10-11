@@ -104,6 +104,7 @@ public final class HudService implements Listener {
                     inGame.add(player);
                 }
             }
+            this.timers.updatePresence(inGame);
             this.timers.tick(inGame);
             if (this.tick % 10 == 0) {
                 this.goals.pollInventories();
@@ -160,7 +161,7 @@ public final class HudService implements Listener {
         }
         return switch (timer.state()) {
             case RUNNING -> this.messages().get("hud.timer.running", placeholders);
-            case PAUSED -> this.messages().get("hud.timer.paused", placeholders);
+            case PAUSED -> this.messages().get(this.timers.isWaitingForInput(player) ? "hud.timer.paused-move" : "hud.timer.paused", placeholders);
             case FINISHED -> this.messages().get("hud.timer.finished", placeholders);
             case IDLE -> {
                 if (this.timers.isWaitingForInput(player)) {

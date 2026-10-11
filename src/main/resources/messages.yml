@@ -117,6 +117,8 @@ timer:
   mode-changed: '<prefix><gray>Timer mode: <white><mode>'
   scope-changed: '<prefix><gray>Timer scope: <white><scope>'
   trigger-changed: '<prefix><gray>Timer start: <white><trigger>'
+  stop-when-empty-on: '<prefix><green>The timer now stops while nobody is playing.'
+  stop-when-empty-off: '<prefix><gray>The timer keeps running while nobody is playing.'
   status: '<prefix><gray>Timer <white><state></white> <dark_gray>|</dark_gray> RTA <white><rta></white> <dark_gray>|</dark_gray> IGT <white><igt></white> <dark_gray>|</dark_gray> showing <white><mode></white>, <white><scope></white>, start <white><trigger>'
 
 hud:
@@ -126,6 +128,7 @@ hud:
   timer:
     running: '<gradient:#facc15:#f97316><bold><time></bold></gradient>'
     paused: '<yellow>⏸ <bold><time></bold>'
+    paused-move: '<yellow>⏸ <bold><time></bold> <gray>- move to continue'
     finished: '<green>✔ <bold><time></bold>'
     failed: '<red>✘ <bold><time></bold>'
     waiting: '<gray>Move to start the timer'
@@ -214,7 +217,7 @@ help:
   - '<white>/magicreset resume <gray>[countdown]'
   - '<white>/magicreset seed <gray>[random | fixed \<seed> | copy | show on|off]'
   - '<white>/magicreset backup <gray>[on|off] - keep a copy of every reset world'
-  - '<white>/magicreset timer <gray>[start|pause|resume|reset|set \<time>|mode|scope|trigger]'
+  - '<white>/magicreset timer <gray>[start|pause|resume|reset|set \<time>|mode|scope|start-on-move|stop-when-empty]'
   - '<white>/magicreset goal <gray>[none|beat|dragon|kill|dimension|advancement|break|item]'
   - '<white>/magicreset deaths <gray>[off|hardcore|lives \<n>]'
   - '<white>/magicreset worlds <gray>[nether|end on|off] - which worlds a reset deletes'

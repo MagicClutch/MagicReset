@@ -45,7 +45,7 @@ public final class MagicReset extends JavaPlugin {
             this.settings.worlds().useMainNetherEnd());
         this.timers = new TimerService(() -> {
             Settings.Timer timer = this.settings.timer();
-            return new TimerService.TimerSettings(timer.mode(), timer.scope(), timer.start(), timer.igtPauseWhenEmpty());
+            return new TimerService.TimerSettings(timer.mode(), timer.scope(), timer.start(), timer.igtPauseWhenEmpty(), timer.stopWhenEmpty());
         });
         this.goals = new GoalService(
             () -> this.settings.goal().goal(),
