@@ -329,13 +329,18 @@ public final class GameWorlds {
             world.getWorldBorder().setCenter(center.getBlockX() + 0.5, center.getBlockZ() + 0.5);
             world.getWorldBorder().setSize(config.borderSize());
         }
-        world.setGameRule(GameRules.LOCATOR_BAR, config.locatorBar());
+        world.setGameRule(GameRules.LOCATOR_BAR, this.locatorBarEnabled());
         config.gameRules().forEach((name, value) -> this.applyGameRule(world, name, value));
+    }
+
+    /** A manhunt needs the locator bar, otherwise worlds.locator-bar decides. */
+    private boolean locatorBarEnabled() {
+        return this.settings.get().worlds().locatorBar() || this.settings.get().manhunt().enabled();
     }
 
     /** Applies worlds.locator-bar to the loaded game worlds right away. */
     public void applyLocatorBar() {
-        boolean enabled = this.settings.get().worlds().locatorBar();
+        boolean enabled = this.locatorBarEnabled();
         this.loadedGameWorlds().forEach(world -> world.setGameRule(GameRules.LOCATOR_BAR, enabled));
     }
 

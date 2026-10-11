@@ -86,10 +86,15 @@ public final class Settings {
         boolean stopWhenEmpty,
         int decimals,
         TimeFormat.Style style,
+        String format,
         boolean actionBar,
         boolean showWhenIdle,
         int updateInterval
     ) {
+        /** Formats a time for the action bar, sidebar and leaderboard. */
+        public String display(long millis) {
+            return this.format.equalsIgnoreCase("auto") ? TimeFormat.format(millis, this.decimals, this.style) : TimeFormat.pattern(millis, this.format);
+        }
     }
 
     public record GoalSettings(Goal goal, boolean spectatorOnFinish, int resetAfter) {
@@ -99,6 +104,9 @@ public final class Settings {
     }
 
     public record AutoReset(List<Integer> warnings) {
+    }
+
+    public record Manhunt(boolean enabled, int targetLives, int headStart, boolean hunterCompass, int resetAfter) {
     }
 
     public record Scoreboard(boolean enabledByDefault, int updateInterval) {
@@ -118,6 +126,7 @@ public final class Settings {
     private final Deaths deaths;
     private final AutoReset autoReset;
     private final Scoreboard scoreboard;
+    private final Manhunt manhunt;
 
     private final Logger logger;
 
@@ -206,6 +215,7 @@ public final class Settings {
             config.getBoolean("timer.stop-when-empty", false),
             Math.clamp(config.getInt("timer.decimals", 2), 0, 3),
             this.enumValue(TimeFormat.Style.class, config.getString("timer.style"), TimeFormat.Style.DIGITAL, "timer.style"),
+            this.timeFormat(config.getString("timer.format", "auto")),
             config.getBoolean("timer.action-bar", true),
             config.getBoolean("timer.show-when-idle", true),
             Math.clamp(config.getInt("timer.update-interval", 1), 1, 20)
@@ -232,6 +242,13 @@ public final class Settings {
         }
         this.autoReset = new AutoReset(List.copyOf(warnings));
 
+        this.manhunt = new Manhunt(
+            config.getBoolean("manhunt.enabled", false),
+            Math.clamp(config.getInt("manhunt.target-lives", 1), 1, 100),
+            Math.clamp(config.getInt("manhunt.head-start", 30), 0, 600),
+            config.getBoolean("manhunt.hunter-compass", true),
+            config.getInt("manhunt.reset-after", -1)
+        );
         this.scoreboard = new Scoreboard(
             config.getBoolean("scoreboard.enabled-by-default", true),
             Math.clamp(config.getInt("scoreboard.update-interval", 10), 1, 100)
@@ -252,6 +269,14 @@ public final class Settings {
             return Goal.NONE;
         }
         return new Goal(type, target, Math.clamp(config.getInt("goal.amount", 1), 1, 100_000));
+    }
+
+    private String timeFormat(String raw) {
+        if (raw == null || raw.isBlank() || raw.equalsIgnoreCase("auto") || TimeFormat.isValidPattern(raw)) {
+            return raw == null || raw.isBlank() ? "auto" : raw;
+        }
+        this.logger.warning("timer.format '" + raw + "' needs H, m or s, using auto");
+        return "auto";
     }
 
     private WorldType worldType(String raw) {
@@ -321,6 +346,10 @@ public final class Settings {
 
     public AutoReset autoReset() {
         return this.autoReset;
+    }
+
+    public Manhunt manhunt() {
+        return this.manhunt;
     }
 
     public Scoreboard scoreboard() {

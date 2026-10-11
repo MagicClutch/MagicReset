@@ -34,11 +34,11 @@ public final class Leaderboard {
         this.logger = logger;
     }
 
-    /** One board per goal (type, target, amount) and timer mode, because RTA and IGT times are not comparable. */
-    public static String category(Goal goal, TimerMode mode) {
+    /** One board per goal (type, target, amount), timer mode (RTA and IGT are not comparable) and manhunt or not. */
+    public static String category(Goal goal, TimerMode mode, boolean manhunt) {
         String target = goal.target() == null ? "-" : goal.target().asString();
         // '.' is the YAML path separator, so it never appears in a category
-        return (goal.type().name() + "|" + target + "|" + goal.amount() + "|" + mode.name())
+        return ((manhunt ? "manhunt|" : "") + goal.type().name() + "|" + target + "|" + goal.amount() + "|" + mode.name())
             .toLowerCase(java.util.Locale.ROOT).replace('.', '_');
     }
 

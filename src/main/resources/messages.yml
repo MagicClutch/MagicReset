@@ -117,6 +117,9 @@ timer:
   mode-changed: '<prefix><gray>Timer mode: <white><mode>'
   scope-changed: '<prefix><gray>Timer scope: <white><scope>'
   trigger-changed: '<prefix><gray>Timer start: <white><trigger>'
+  format-current: '<prefix><gray>Time format: <white><format></white> <dark_gray>(example: <example>)'
+  format-changed: '<prefix><green>Time format set to <white><format></white> <dark_gray>(example: <example>)'
+  format-invalid: '<prefix><red>Use auto or a pattern with H (hours), m (minutes), s (seconds), S (fractions), e.g. <white>HH:mm:ss</white> or <white>mm:ss.SSS</white>.'
   stop-when-empty-on: '<prefix><green>The timer now stops while nobody is playing.'
   stop-when-empty-off: '<prefix><gray>The timer keeps running while nobody is playing.'
   status: '<prefix><gray>Timer <white><state></white> <dark_gray>|</dark_gray> RTA <white><rta></white> <dark_gray>|</dark_gray> IGT <white><igt></white> <dark_gray>|</dark_gray> showing <white><mode></white>, <white><scope></white>, start <white><trigger>'
@@ -148,6 +151,21 @@ scoreboard:
     running: '<green>Running'
     completed: '<gold>Completed'
     failed: '<red>Failed'
+  role:
+    target: '<gold>Target'
+    hunter: '<red>Hunter'
+    spectator: '<gray>Spectator'
+  # used while manhunt mode is on
+  manhunt-lines:
+    - '<dark_gray>Run #<run>'
+    - ''
+    - '<gray>Time <white><time>'
+    - '<gray>You are <role>'
+    - ' '
+    - '<gray>Targets'
+    - '<white><targets>'
+    - '<gray>Targets win with'
+    - '<white><goal>'
   lines:
     - '<dark_gray>Run #<run>'
     - ''
@@ -161,6 +179,42 @@ scoreboard:
     - '<gray>Deaths <white><deaths>'
     - '<gray>Lives <white><lives>'
     - '<gray>Players <white><players>'
+
+manhunt:
+  enabled: '<prefix><green>Manhunt mode is on.</green> <gray>Set targets with /manhunt target set \<players> and start with /manhunt start.'
+  disabled: '<prefix><gray>Manhunt mode is off.'
+  no-targets: '<prefix><red>Set at least one target first: /manhunt target set \<players>'
+  setting-changed: '<prefix><gray>Manhunt <white><setting></white> set to <white><value></white>.'
+  started: '<prefix><red><bold>Manhunt!</bold></red> <gray>Targets: <white><targets></white> <dark_gray>(<lives> lives)'
+  head-start: '<yellow>Head start for the targets: <white><bold><seconds></bold></white>s'
+  hunt-begins: '<red><bold>The hunt begins!'
+  target-life-lost: '<prefix><red><player></red> <gray>died - <white><lives></white> lives left.'
+  target-out: '<prefix><red><bold><player></bold></red> <gray>is out!'
+  compass-tracking: '<prefix><gray>Tracking <white><player></white> <dark_gray>(<distance>m)'
+  compass-none: '<prefix><gray>No target in this dimension.'
+  win-targets:
+    title: '<gold><bold><player> wins!'
+    subtitle: '<gray><goal> in <white><time>'
+    chat: '<prefix><gold><bold><player></bold></gold> <gray>reached the goal (<white><goal></white>) in <white><time></white> - the targets win!'
+  win-hunters:
+    title: '<red><bold>Hunters win!'
+    subtitle: '<white><targets></white> <gray>hunted down after <white><time>'
+    chat: '<prefix><red><bold>Hunters win!</bold></red> <gray><targets> hunted down after <white><time></white> <dark_gray>(last kill: <player>)'
+  status:
+    - '<gradient:#ef4444:#f97316><bold>Magic Manhunt</bold></gradient> <dark_gray>- <state>'
+    - '<gray>Targets: <white><targets></white> <dark_gray>(<lives> lives)'
+    - '<gray>Hunters online: <white><hunters>'
+    - '<gray>Targets win with: <white><goal>'
+    - '<gray>Head start: <white><headstart>s</white> <dark_gray>|</dark_gray> compass: <white><compass></white> <dark_gray>|</dark_gray> auto reset: <white><resetafter>'
+  help:
+    - '<gradient:#ef4444:#f97316><bold>Magic Manhunt</bold></gradient> <dark_gray>- commands (alias /mm)'
+    - '<white>/manhunt on|off <gray>- manhunt mode'
+    - '<white>/manhunt target set|add|remove \<players> <gray>| <white>target clear'
+    - '<white>/manhunt hunter|spectator \<players>'
+    - '<white>/manhunt start <gray>[seed] - new world, the hunt begins'
+    - '<white>/manhunt goal ... <gray>- what the targets have to do (nether, end, dragon, beat, item, ...)'
+    - '<white>/manhunt lives|headstart|compass|resetafter ...'
+    - '<white>/manhunt timer ... <gray>- timer settings incl. format'
 
 backup:
   status-on: '<prefix><green>Backups are on.</green> <gray>Every reset moves the old worlds to <white><folder></white> (keeping the last <white><keep></white>).'

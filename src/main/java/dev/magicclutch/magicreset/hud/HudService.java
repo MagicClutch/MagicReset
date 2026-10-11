@@ -9,7 +9,6 @@ import dev.magicclutch.magicreset.goal.GoalService;
 import dev.magicclutch.magicreset.stats.Leaderboard;
 import dev.magicclutch.magicreset.timer.RunTimer;
 import dev.magicclutch.magicreset.timer.TimerService;
-import dev.magicclutch.magicreset.util.TimeFormat;
 import dev.magicclutch.magicreset.world.GameWorlds;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -164,7 +163,7 @@ public final class HudService implements Listener {
     public TagResolver timePlaceholders(Player player) {
         RunTimer timer = this.timers.displayed(player);
         Settings.Timer config = this.settings().timer();
-        String time = TimeFormat.format(timer.millis(this.timers.mode()), config.decimals(), config.style());
+        String time = config.display(timer.millis(this.timers.mode()));
         return TagResolver.resolver(
             Placeholder.unparsed("time", time),
             Placeholder.unparsed("mode", this.timers.mode().name())
@@ -213,7 +212,8 @@ public final class HudService implements Listener {
         boolean inLimbo = this.worlds.isLimbo(player.getWorld());
         objective.displayName(this.messages().get(inLimbo ? "leaderboard.title" : "scoreboard.title"));
 
-        List<Component> lines = inLimbo ? this.leaderboardLines() : this.messages().list("scoreboard.lines", this.sidebarPlaceholders(player));
+        String linesKey = this.plugin.manhunt().isEnabled() ? "scoreboard.manhunt-lines" : "scoreboard.lines";
+        List<Component> lines = inLimbo ? this.leaderboardLines() : this.messages().list(linesKey, this.sidebarPlaceholders(player));
         int size = Math.min(lines.size(), 15);
         List<Component> previous = this.sentLines.getOrDefault(player.getUniqueId(), List.of());
         for (int i = 0; i < size; i++) {
@@ -246,7 +246,7 @@ public final class HudService implements Listener {
         lines.add(text.get("leaderboard.goal", Placeholder.component("goal", this.goals.describe(this.goals.goal())),
             Placeholder.unparsed("mode", this.timers.mode().name())));
         lines.add(Component.empty());
-        List<Leaderboard.Entry> top = this.plugin.leaderboard().top(Leaderboard.category(this.goals.goal(), this.timers.mode()));
+        List<Leaderboard.Entry> top = this.plugin.leaderboard().top(Leaderboard.category(this.goals.goal(), this.timers.mode(), this.plugin.manhunt().isEnabled()));
         if (top.isEmpty()) {
             lines.add(text.get("leaderboard.empty"));
             return lines;
@@ -259,7 +259,7 @@ public final class HudService implements Listener {
             lines.add(text.get("leaderboard.entry",
                 Placeholder.unparsed("rank", Integer.toString(i + 1)),
                 Placeholder.unparsed("player", entry.name()),
-                Placeholder.unparsed("time", TimeFormat.format(entry.millis(), config.decimals(), config.style())),
+                Placeholder.unparsed("time", config.display(entry.millis())),
                 Placeholder.unparsed("date", dates.format(Instant.ofEpochMilli(entry.achievedAt())))));
         }
         return lines;
@@ -284,6 +284,9 @@ public final class HudService implements Listener {
             Placeholder.unparsed("lives", lives),
             Placeholder.unparsed("players", Long.toString(players)),
             Placeholder.unparsed("scope", this.timers.scope().name().toLowerCase(Locale.ROOT)),
+            Placeholder.component("role", this.messages().get("scoreboard.role." + this.plugin.manhunt().role(player).name().toLowerCase(Locale.ROOT))),
+            Placeholder.unparsed("targets", this.plugin.manhunt().targetNames()),
+            Placeholder.unparsed("target-lives", Integer.toString(this.plugin.manhunt().livesLeft(player.getUniqueId()))),
             Placeholder.component("status", this.messages().get("scoreboard.status." + this.statusKey()))
         );
     }

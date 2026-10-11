@@ -125,6 +125,10 @@ timer:
   stop-when-empty: false
   # IGT only: stop counting while no player is in the game worlds (independent of stop-when-empty).
   igt-pause-when-empty: true
+  # Time format in the action bar, sidebar and leaderboard. "auto" uses style + decimals below,
+  # or a pattern: H = hours, m = minutes, s = seconds, S = fractions (S/SS/SSS); doubled letters are
+  # zero padded. Examples: HH:mm:ss, mm:ss.SSS, H:mm:ss.SS. Also /magicreset timer format <pattern>.
+  format: auto
   # Fractional digits shown in the action bar (0-3). Chat output always uses 3.
   decimals: 2
   # DIGITAL = 1:02:03.45   TEXT = 1h 02m 03.45s
@@ -174,3 +178,15 @@ scoreboard:
   enabled-by-default: true
   update-interval: 10
 
+manhunt:
+  # Magic Manhunt (/manhunt, /mm): targets try to reach the goal above, everybody else hunts them.
+  # The hunters see the targets on the locator bar, the targets see nobody.
+  enabled: false
+  # Lives of every target; the hunters win when all targets lost all lives.
+  target-lives: 1
+  # Seconds the hunters are frozen at the start.
+  head-start: 30
+  # Give hunters a compass; right-click points it at the nearest target in the same dimension.
+  hunter-compass: true
+  # Seconds after the manhunt ended until an automatic reset, -1 = never.
+  reset-after: -1

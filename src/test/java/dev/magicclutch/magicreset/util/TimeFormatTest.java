@@ -43,4 +43,23 @@ class TimeFormatTest {
         assertEquals("1m 5s", TimeFormat.compact(65));
         assertEquals("1d 1h", TimeFormat.compact(90_000));
     }
+
+    @Test
+    void patterns() {
+        long time = 3_723_456L; // 1h 2m 3.456s
+        assertEquals("01:02:03", TimeFormat.pattern(time, "HH:mm:ss"));
+        assertEquals("1:02:03.45", TimeFormat.pattern(time, "H:mm:ss.SS"));
+        // without hours the minutes hold the whole rest
+        assertEquals("62:03.456", TimeFormat.pattern(time, "mm:ss.SSS"));
+        // only seconds: they hold everything
+        assertEquals("3723", TimeFormat.pattern(time, "ss"));
+        assertEquals("00:05", TimeFormat.pattern(5_999, "mm:ss"));
+    }
+
+    @Test
+    void patternValidation() {
+        org.junit.jupiter.api.Assertions.assertTrue(TimeFormat.isValidPattern("HH:mm:ss"));
+        org.junit.jupiter.api.Assertions.assertFalse(TimeFormat.isValidPattern("SSS"));
+        org.junit.jupiter.api.Assertions.assertFalse(TimeFormat.isValidPattern(""));
+    }
 }

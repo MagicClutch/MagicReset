@@ -21,6 +21,7 @@ permissions:
       magicreset.command.worlds: true
       magicreset.command.leaderboard: true
       magicreset.command.backup: true
+      magicreset.manhunt: true
       magicreset.command.autoreset: true
       magicreset.command.locatorbar: true
       magicreset.command.reload: true
@@ -49,6 +50,9 @@ permissions:
     default: op
   magicreset.command.deaths:
     description: Change the death rules.
+    default: op
+  magicreset.manhunt:
+    description: Run Magic Manhunt (/manhunt, /mm) - targets, roles and manhunt settings.
     default: op
   magicreset.command.backup:
     description: Turn world backups on or off.

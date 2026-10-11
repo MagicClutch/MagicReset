@@ -4,6 +4,7 @@ import dev.magicclutch.magicreset.MagicReset;
 import dev.magicclutch.magicreset.config.Messages;
 import dev.magicclutch.magicreset.config.Settings;
 import dev.magicclutch.magicreset.goal.GoalService;
+import dev.magicclutch.magicreset.manhunt.ManhuntService;
 import dev.magicclutch.magicreset.stats.Leaderboard;
 import dev.magicclutch.magicreset.timer.RunTimer;
 import dev.magicclutch.magicreset.timer.TimerScope;
@@ -617,6 +618,7 @@ public final class GameManager {
             player.playSound(GO_SOUND);
         }
         this.timers.begin(participantsNow);
+        this.plugin.manhunt().onRunStart();
         this.saveAsync();
     }
 
@@ -643,6 +645,7 @@ public final class GameManager {
         player.teleport(target);
         this.participants.put(player.getUniqueId(), this.run);
         this.timers.onParticipantJoin(player);
+        this.plugin.manhunt().prepare(player);
     }
 
     private void sendToLimbo(Player player) {
@@ -889,6 +892,10 @@ public final class GameManager {
         if (!this.isActiveRunner(player)) {
             return;
         }
+        if (this.plugin.manhunt().isEnabled()) {
+            this.endManhunt(ManhuntService.Winner.TARGETS, player);
+            return;
+        }
         Settings.GoalSettings config = this.settings().goal();
         if (this.timers.scope() == TimerScope.GLOBAL) {
             if (this.timers.global().state() == RunTimer.State.IDLE) {
@@ -940,9 +947,40 @@ public final class GameManager {
         this.saveAsync();
     }
 
+    /**
+     * Ends a manhunt with a big title for everybody.
+     *
+     * @param decisive the target that reached the goal, or the hunter that got the last kill
+     */
+    private void endManhunt(ManhuntService.Winner winner, Player decisive) {
+        this.outcome = Outcome.COMPLETED;
+        this.timers.finishAll();
+        long millis = this.timers.displayed(decisive).millis(this.timers.mode());
+        this.plugin.manhunt().onRunEnd();
+        String time = this.formatPrecise(millis);
+        if (winner == ManhuntService.Winner.TARGETS) {
+            this.recordTime(decisive, millis);
+        }
+        String key = winner == ManhuntService.Winner.TARGETS ? "manhunt.win-targets" : "manhunt.win-hunters";
+        TagResolver resolvers = TagResolver.resolver(
+            Placeholder.unparsed("player", decisive.getName()),
+            Placeholder.unparsed("targets", this.plugin.manhunt().targetNames()),
+            Placeholder.unparsed("time", time),
+            this.goalPlaceholder());
+        this.messages().send(Bukkit.getServer(), key + ".chat", resolvers);
+        Title title = Title.title(this.messages().get(key + ".title", resolvers), this.messages().get(key + ".subtitle", resolvers),
+            Title.Times.times(Duration.ofMillis(200), Duration.ofSeconds(6), Duration.ofSeconds(1)));
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            online.showTitle(title);
+            online.playSound(winner == ManhuntService.Winner.TARGETS ? COMPLETE_SOUND : FAIL_SOUND);
+        }
+        this.scheduleFollowUpReset(this.settings().manhunt().resetAfter());
+        this.saveAsync();
+    }
+
     /** Puts a completion time on the leaderboard of the current goal and announces records. */
     private void recordTime(Player player, long millis) {
-        String category = Leaderboard.category(this.goals.goal(), this.timers.mode());
+        String category = Leaderboard.category(this.goals.goal(), this.timers.mode(), this.plugin.manhunt().isEnabled());
         int rank = this.plugin.leaderboard().record(category,
             new Leaderboard.Entry(player.getUniqueId(), player.getName(), millis, System.currentTimeMillis(), this.seed));
         if (rank > 0) {
@@ -955,6 +993,17 @@ public final class GameManager {
 
     public void onDeath(Player player) {
         if (!this.isActiveRunner(player)) {
+            return;
+        }
+        ManhuntService manhunt = this.plugin.manhunt();
+        if (manhunt.isEnabled()) {
+            // in a manhunt only the targets' lives matter, the normal death rules are not used
+            this.deaths++;
+            if (manhunt.role(player) == ManhuntService.Role.TARGET && manhunt.onTargetDeath(player)) {
+                Player killer = player.getKiller();
+                this.endManhunt(ManhuntService.Winner.HUNTERS, killer != null ? killer : player);
+            }
+            this.saveAsync();
             return;
         }
         Settings.Deaths config = this.settings().deaths();

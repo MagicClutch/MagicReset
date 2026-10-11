@@ -7,6 +7,7 @@ import dev.magicclutch.magicreset.game.GameListener;
 import dev.magicclutch.magicreset.game.GameManager;
 import dev.magicclutch.magicreset.goal.GoalService;
 import dev.magicclutch.magicreset.hud.HudService;
+import dev.magicclutch.magicreset.manhunt.ManhuntService;
 import dev.magicclutch.magicreset.schedule.AutoResetScheduler;
 import dev.magicclutch.magicreset.stats.Leaderboard;
 import dev.magicclutch.magicreset.timer.TimerService;
@@ -32,6 +33,7 @@ public final class MagicReset extends JavaPlugin {
     private HudService hud;
     private AutoResetScheduler autoReset;
     private Leaderboard leaderboard;
+    private ManhuntService manhunt;
     private boolean started;
 
     @Override
@@ -43,6 +45,7 @@ public final class MagicReset extends JavaPlugin {
         this.leaderboard.load();
         this.worlds = new GameWorlds(this.getLogger(), this::settings, this.settings.worlds().namespace(),
             this.settings.worlds().useMainNetherEnd());
+        this.manhunt = new ManhuntService(this, this.worlds);
         this.timers = new TimerService(() -> {
             Settings.Timer timer = this.settings.timer();
             return new TimerService.TimerSettings(timer.mode(), timer.scope(), timer.start(), timer.igtPauseWhenEmpty(), timer.stopWhenEmpty());
@@ -52,7 +55,7 @@ public final class MagicReset extends JavaPlugin {
             () -> this.timers.scope(),
             this::messages,
             this.worlds,
-            player -> this.game.isActiveRunner(player),
+            player -> this.game.isActiveRunner(player) && this.manhunt.mayCompleteGoal(player),
             player -> this.game.completeGoal(player)
         );
         this.game = new GameManager(this, this.worlds, this.timers, this.goals);
@@ -64,6 +67,7 @@ public final class MagicReset extends JavaPlugin {
         if (extra != null) {
             this.hud.load(extra.getConfigurationSection("hud"));
             this.autoReset.load(extra.getConfigurationSection("auto-reset"));
+            this.manhunt.load(extra.getConfigurationSection("manhunt"));
         }
 
         PluginManager plugins = this.getServer().getPluginManager();
@@ -71,6 +75,7 @@ public final class MagicReset extends JavaPlugin {
         plugins.registerEvents(new PortalListener(this, this.worlds, this.game::spawn), this);
         plugins.registerEvents(this.goals, this);
         plugins.registerEvents(this.hud, this);
+        plugins.registerEvents(this.manhunt, this);
 
         MagicResetCommand command = new MagicResetCommand(this, this.game, this.timers, this.hud, this.autoReset);
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> command.register(event.registrar()));
@@ -154,6 +159,9 @@ public final class MagicReset extends JavaPlugin {
         if (this.autoReset != null) {
             this.autoReset.save(section.createSection("auto-reset"));
         }
+        if (this.manhunt != null) {
+            this.manhunt.save(section.createSection("manhunt"));
+        }
     }
 
     public Settings settings() {
@@ -170,6 +178,10 @@ public final class MagicReset extends JavaPlugin {
 
     public GoalService goals() {
         return this.goals;
+    }
+
+    public ManhuntService manhunt() {
+        return this.manhunt;
     }
 
     public Leaderboard leaderboard() {

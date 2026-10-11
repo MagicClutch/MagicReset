@@ -37,6 +37,21 @@ a sidebar and a locator bar switch.
 - **Locator bar** – `worlds.locator-bar` / `/mr locatorbar on|off` switches the vanilla locator bar in the game worlds.
 - All texts are in English and fully editable in `messages.yml` (MiniMessage).
 
+## Magic Manhunt
+
+`/manhunt` (alias `/mm`, permission `magicreset.manhunt`) turns a run into a manhunt:
+
+- `/mm target set <players>` chooses one or more targets (runners), everybody else hunts them
+  (`/mm hunter|spectator <players>` to set roles by hand).
+- `/mm start [seed]` switches manhunt mode on and resets into a new world. The hunters are frozen during the
+  head start (`/mm headstart <seconds>`).
+- **Locator bar:** the hunters see only the targets, the targets see nobody. Hunters can also right-click a
+  compass to point it at the nearest target (`/mm compass on|off`).
+- **Targets win** by reaching the goal first (`/mm goal ...` – nether, end, dragon, Beat Minecraft, item,
+  advancement, ...). **Hunters win** when every target lost all lives (`/mm lives <n>`).
+- The end shows a big title with the winner and the time; `/mm resetafter <seconds>` resets automatically.
+- Manhunt times have their own leaderboard.
+
 ## Requirements
 
 - Paper (or a Paper fork) **26.2**
@@ -98,6 +113,7 @@ Main command `/magicreset`, alias `/mr`. `/reset` is registered as a shortcut fo
 | `/mr timer mode rta\|igt` | Real time or in-game time. |
 | `/mr timer scope global\|individual` | Shared or personal timers. |
 | `/mr timer trigger auto\|first-input\|manual` | When the timer starts. |
+| `/mr timer format <pattern\|auto>` | Time format, e.g. `HH:mm:ss`, `mm:ss.SSS`, `H:mm:ss.SS`. |
 | `/mr timer start-on-move on\|off` | Start the timer only on the first movement (same as trigger first-input). |
 | `/mr timer stop-when-empty on\|off` | Stop the timer while nobody is playing, continue when someone is back. |
 | `/mr goal` | Show the goal and progress. |
@@ -134,6 +150,7 @@ Settings changed by commands are written back into `config.yml` (comments are ke
 | `magicreset.command.goal` | op | Goal settings. |
 | `magicreset.command.deaths` | op | Death rules. |
 | `magicreset.command.worlds` | op | Show and choose the reset worlds. |
+| `magicreset.manhunt` | op | Magic Manhunt (`/manhunt`, `/mm`). |
 | `magicreset.command.backup` | op | Switch world backups. |
 | `magicreset.command.leaderboard` | op | Clear the leaderboard (viewing is allowed for everyone). |
 | `magicreset.command.autoreset` | op | Scheduled resets. |

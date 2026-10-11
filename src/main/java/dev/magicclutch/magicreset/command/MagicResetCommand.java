@@ -110,7 +110,7 @@ public final class MagicResetCommand {
             .then(Commands.literal("leaderboard")
                 .executes(this::showLeaderboard)
                 .then(Commands.literal("clear").requires(permission("leaderboard")).executes(ctx -> {
-                    this.plugin.leaderboard().clear(Leaderboard.category(this.plugin.goals().goal(), this.timers.mode()));
+                    this.plugin.leaderboard().clear(Leaderboard.category(this.plugin.goals().goal(), this.timers.mode(), this.plugin.manhunt().isEnabled()));
                     this.messages().send(sender(ctx), "leaderboard.cleared", this.game.goalPlaceholder());
                     return Command.SINGLE_SUCCESS;
                 })))
@@ -127,6 +127,7 @@ public final class MagicResetCommand {
         if (this.settings().reset().shortcutCommand()) {
             registrar.register(this.resetNode("reset").build(), "Reset the game worlds (MagicReset)");
         }
+        registrar.register(new ManhuntCommand(this.plugin, this.game, this).build(), "Magic Manhunt", List.of("mm"));
     }
 
     private static java.util.function.Predicate<CommandSourceStack> permission(String node) {
@@ -141,7 +142,7 @@ public final class MagicResetCommand {
     // reset / cancel / limbo
     // ---------------------------------------------------------------------------------------------------------
 
-    private LiteralArgumentBuilder<CommandSourceStack> resetNode(String name) {
+    LiteralArgumentBuilder<CommandSourceStack> resetNode(String name) {
         return Commands.literal(name)
             .requires(permission("reset"))
             .executes(ctx -> this.reset(ctx, null, this.settings().reset().countdown(), this.settings().reset().limboCountdown()))
@@ -265,7 +266,7 @@ public final class MagicResetCommand {
     // timer
     // ---------------------------------------------------------------------------------------------------------
 
-    private LiteralArgumentBuilder<CommandSourceStack> timerNode() {
+    LiteralArgumentBuilder<CommandSourceStack> timerNode() {
         return Commands.literal("timer").requires(permission("timer"))
             .executes(this::timerStatus)
             .then(Commands.literal("start").executes(ctx -> {
@@ -309,6 +310,25 @@ public final class MagicResetCommand {
             .then(Commands.literal("start-on-move")
                 .then(Commands.literal("on").executes(ctx -> this.setTrigger(ctx, StartTrigger.FIRST_INPUT)))
                 .then(Commands.literal("off").executes(ctx -> this.setTrigger(ctx, StartTrigger.AUTO))))
+            .then(Commands.literal("format")
+                .executes(ctx -> {
+                    this.messages().send(sender(ctx), "timer.format-current", Placeholder.unparsed("format", this.settings().timer().format()),
+                        Placeholder.unparsed("example", this.settings().timer().display(3_723_456L)));
+                    return Command.SINGLE_SUCCESS;
+                })
+                .then(Commands.argument("pattern", StringArgumentType.greedyString())
+                    .suggests(this.suggest(() -> Stream.of("auto", "HH:mm:ss", "mm:ss", "mm:ss.SSS", "H:mm:ss.SS", "HH:mm:ss.SSS")))
+                    .executes(ctx -> {
+                        String pattern = StringArgumentType.getString(ctx, "pattern").trim();
+                        if (!pattern.equalsIgnoreCase("auto") && !TimeFormat.isValidPattern(pattern)) {
+                            this.messages().send(sender(ctx), "timer.format-invalid");
+                            return 0;
+                        }
+                        this.plugin.setConfigValue("timer.format", pattern.equalsIgnoreCase("auto") ? "auto" : pattern);
+                        this.messages().send(sender(ctx), "timer.format-changed", Placeholder.unparsed("format", this.settings().timer().format()),
+                            Placeholder.unparsed("example", this.settings().timer().display(3_723_456L)));
+                        return Command.SINGLE_SUCCESS;
+                    })))
             .then(Commands.literal("trigger")
                 .then(Commands.literal("auto").executes(ctx -> this.setTrigger(ctx, StartTrigger.AUTO)))
                 .then(Commands.literal("first-input").executes(ctx -> this.setTrigger(ctx, StartTrigger.FIRST_INPUT)))
@@ -393,7 +413,7 @@ public final class MagicResetCommand {
     // goal
     // ---------------------------------------------------------------------------------------------------------
 
-    private LiteralArgumentBuilder<CommandSourceStack> goalNode() {
+    LiteralArgumentBuilder<CommandSourceStack> goalNode() {
         SuggestionProvider<CommandSourceStack> entities = this.suggest(() -> Registry.ENTITY_TYPE.stream()
             .filter(type -> type.isAlive()).map(type -> type.getKey().asString()));
         SuggestionProvider<CommandSourceStack> blocks = this.suggest(() -> Registry.BLOCK.keyStream().map(NamespacedKey::asString));
