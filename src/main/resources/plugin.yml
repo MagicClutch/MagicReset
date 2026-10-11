@@ -19,6 +19,7 @@ permissions:
       magicreset.command.goal: true
       magicreset.command.deaths: true
       magicreset.command.worlds: true
+      magicreset.command.leaderboard: true
       magicreset.command.autoreset: true
       magicreset.command.radar: true
       magicreset.command.reload: true
@@ -47,6 +48,9 @@ permissions:
     default: op
   magicreset.command.deaths:
     description: Change the death rules.
+    default: op
+  magicreset.command.leaderboard:
+    description: Clear the leaderboard of the current goal (viewing it is allowed for everyone).
     default: op
   magicreset.command.worlds:
     description: Show and choose the worlds a reset deletes.

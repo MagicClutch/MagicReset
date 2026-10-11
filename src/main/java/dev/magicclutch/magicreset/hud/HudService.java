@@ -6,10 +6,14 @@ import dev.magicclutch.magicreset.config.Settings;
 import dev.magicclutch.magicreset.game.GameManager;
 import dev.magicclutch.magicreset.goal.Goal;
 import dev.magicclutch.magicreset.goal.GoalService;
+import dev.magicclutch.magicreset.stats.Leaderboard;
 import dev.magicclutch.magicreset.timer.RunTimer;
 import dev.magicclutch.magicreset.timer.TimerService;
 import dev.magicclutch.magicreset.util.TimeFormat;
 import dev.magicclutch.magicreset.world.GameWorlds;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -265,9 +269,10 @@ public final class HudService implements Listener {
             objective.setDisplaySlot(DisplaySlot.SIDEBAR);
             objective.numberFormat(io.papermc.paper.scoreboard.numbers.NumberFormat.blank());
         }
-        objective.displayName(this.messages().get("scoreboard.title"));
+        boolean inLimbo = this.worlds.isLimbo(player.getWorld());
+        objective.displayName(this.messages().get(inLimbo ? "leaderboard.title" : "scoreboard.title"));
 
-        List<Component> lines = this.messages().list("scoreboard.lines", this.sidebarPlaceholders(player));
+        List<Component> lines = inLimbo ? this.leaderboardLines() : this.messages().list("scoreboard.lines", this.sidebarPlaceholders(player));
         int size = Math.min(lines.size(), 15);
         List<Component> previous = this.sentLines.getOrDefault(player.getUniqueId(), List.of());
         for (int i = 0; i < size; i++) {
@@ -291,6 +296,32 @@ public final class HudService implements Listener {
                 }
             }
         }
+    }
+
+    /** Best times for the goal and timer mode that are selected right now. */
+    public List<Component> leaderboardLines() {
+        Messages text = this.messages();
+        List<Component> lines = new ArrayList<>();
+        lines.add(text.get("leaderboard.goal", Placeholder.component("goal", this.goals.describe(this.goals.goal())),
+            Placeholder.unparsed("mode", this.timers.mode().name())));
+        lines.add(Component.empty());
+        List<Leaderboard.Entry> top = this.plugin.leaderboard().top(Leaderboard.category(this.goals.goal(), this.timers.mode()));
+        if (top.isEmpty()) {
+            lines.add(text.get("leaderboard.empty"));
+            return lines;
+        }
+        DateTimeFormatter dates = DateTimeFormatter.ofPattern(text.raw("leaderboard.date-format"), Locale.ROOT)
+            .withZone(ZoneId.systemDefault());
+        Settings.Timer config = this.settings().timer();
+        for (int i = 0; i < top.size() && lines.size() < 15; i++) {
+            Leaderboard.Entry entry = top.get(i);
+            lines.add(text.get("leaderboard.entry",
+                Placeholder.unparsed("rank", Integer.toString(i + 1)),
+                Placeholder.unparsed("player", entry.name()),
+                Placeholder.unparsed("time", TimeFormat.format(entry.millis(), config.decimals(), config.style())),
+                Placeholder.unparsed("date", dates.format(Instant.ofEpochMilli(entry.achievedAt())))));
+        }
+        return lines;
     }
 
     private TagResolver sidebarPlaceholders(Player player) {

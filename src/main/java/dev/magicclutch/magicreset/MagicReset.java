@@ -8,6 +8,7 @@ import dev.magicclutch.magicreset.game.GameManager;
 import dev.magicclutch.magicreset.goal.GoalService;
 import dev.magicclutch.magicreset.hud.HudService;
 import dev.magicclutch.magicreset.schedule.AutoResetScheduler;
+import dev.magicclutch.magicreset.stats.Leaderboard;
 import dev.magicclutch.magicreset.timer.TimerService;
 import dev.magicclutch.magicreset.world.GameWorlds;
 import dev.magicclutch.magicreset.world.PortalListener;
@@ -30,6 +31,7 @@ public final class MagicReset extends JavaPlugin {
     private GameManager game;
     private HudService hud;
     private AutoResetScheduler autoReset;
+    private Leaderboard leaderboard;
     private boolean started;
 
     @Override
@@ -37,6 +39,8 @@ public final class MagicReset extends JavaPlugin {
         this.saveDefaultConfig();
         this.loadSettings();
 
+        this.leaderboard = new Leaderboard(this.getDataFolder(), this.getLogger());
+        this.leaderboard.load();
         this.worlds = new GameWorlds(this.getLogger(), this::settings, this.settings.worlds().namespace(),
             this.settings.worlds().useMainNetherEnd());
         this.timers = new TimerService(() -> {
@@ -165,5 +169,9 @@ public final class MagicReset extends JavaPlugin {
 
     public GoalService goals() {
         return this.goals;
+    }
+
+    public Leaderboard leaderboard() {
+        return this.leaderboard;
     }
 }

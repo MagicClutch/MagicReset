@@ -4,6 +4,7 @@ import dev.magicclutch.magicreset.MagicReset;
 import dev.magicclutch.magicreset.config.Messages;
 import dev.magicclutch.magicreset.config.Settings;
 import dev.magicclutch.magicreset.goal.GoalService;
+import dev.magicclutch.magicreset.stats.Leaderboard;
 import dev.magicclutch.magicreset.timer.RunTimer;
 import dev.magicclutch.magicreset.timer.TimerScope;
 import dev.magicclutch.magicreset.timer.TimerService;
@@ -721,7 +722,9 @@ public final class GameManager {
             this.timers.global().finish();
             this.timers.endRun();
             this.outcome = Outcome.COMPLETED;
-            String time = this.formatPrecise(this.timers.global().millis(this.timers.mode()));
+            long millis = this.timers.global().millis(this.timers.mode());
+            String time = this.formatPrecise(millis);
+            this.recordTime(player, millis);
             TagResolver resolvers = TagResolver.resolver(Placeholder.unparsed("player", player.getName()), Placeholder.unparsed("time", time), this.goalPlaceholder());
             this.messages().send(Bukkit.getServer(), "goal.completed.global", resolvers);
             Title title = Title.title(this.messages().get("title.completed", resolvers), this.messages().get("title.completed-subtitle", resolvers));
@@ -739,7 +742,9 @@ public final class GameManager {
                 timer.start();
             }
             timer.finish();
-            String time = this.formatPrecise(timer.millis(this.timers.mode()));
+            long millis = timer.millis(this.timers.mode());
+            String time = this.formatPrecise(millis);
+            this.recordTime(player, millis);
             TagResolver resolvers = TagResolver.resolver(Placeholder.unparsed("player", player.getName()), Placeholder.unparsed("time", time), this.goalPlaceholder());
             this.messages().send(Bukkit.getServer(), "goal.completed.individual", resolvers);
             player.showTitle(Title.title(this.messages().get("title.completed", resolvers), this.messages().get("title.completed-subtitle", resolvers)));
@@ -758,6 +763,19 @@ public final class GameManager {
             }
         }
         this.saveAsync();
+    }
+
+    /** Puts a completion time on the leaderboard of the current goal and announces records. */
+    private void recordTime(Player player, long millis) {
+        String category = Leaderboard.category(this.goals.goal(), this.timers.mode());
+        int rank = this.plugin.leaderboard().record(category,
+            new Leaderboard.Entry(player.getUniqueId(), player.getName(), millis, System.currentTimeMillis(), this.seed));
+        if (rank > 0) {
+            this.messages().send(Bukkit.getServer(), rank == 1 ? "leaderboard.new-record" : "leaderboard.new-entry",
+                Placeholder.unparsed("player", player.getName()),
+                Placeholder.unparsed("rank", Integer.toString(rank)),
+                Placeholder.unparsed("time", this.formatPrecise(millis)));
+        }
     }
 
     public void onDeath(Player player) {

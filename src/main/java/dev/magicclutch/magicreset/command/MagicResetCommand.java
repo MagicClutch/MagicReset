@@ -19,6 +19,7 @@ import dev.magicclutch.magicreset.goal.GoalService;
 import dev.magicclutch.magicreset.goal.GoalType;
 import dev.magicclutch.magicreset.hud.HudService;
 import dev.magicclutch.magicreset.schedule.AutoResetScheduler;
+import dev.magicclutch.magicreset.stats.Leaderboard;
 import dev.magicclutch.magicreset.timer.RunTimer;
 import dev.magicclutch.magicreset.timer.StartTrigger;
 import dev.magicclutch.magicreset.timer.TimerMode;
@@ -102,6 +103,13 @@ public final class MagicResetCommand {
             .then(this.goalNode())
             .then(this.deathsNode())
             .then(this.worldsNode())
+            .then(Commands.literal("leaderboard")
+                .executes(this::showLeaderboard)
+                .then(Commands.literal("clear").requires(permission("leaderboard")).executes(ctx -> {
+                    this.plugin.leaderboard().clear(Leaderboard.category(this.plugin.goals().goal(), this.timers.mode()));
+                    this.messages().send(sender(ctx), "leaderboard.cleared", this.game.goalPlaceholder());
+                    return Command.SINGLE_SUCCESS;
+                })))
             .then(this.autoResetNode())
             .then(Commands.literal("scoreboard").requires(permission("scoreboard")).executes(this::toggleScoreboard))
             .then(Commands.literal("radar").requires(permission("radar")).executes(this::toggleRadar))
@@ -433,6 +441,14 @@ public final class MagicResetCommand {
     // ---------------------------------------------------------------------------------------------------------
     // deaths
     // ---------------------------------------------------------------------------------------------------------
+
+    private int showLeaderboard(CommandContext<CommandSourceStack> ctx) {
+        this.messages().send(sender(ctx), "leaderboard.chat-header");
+        for (Component line : this.hud.leaderboardLines()) {
+            sender(ctx).sendMessage(line);
+        }
+        return Command.SINGLE_SUCCESS;
+    }
 
     // ---------------------------------------------------------------------------------------------------------
     // worlds
