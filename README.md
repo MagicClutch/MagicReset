@@ -99,7 +99,11 @@ search/creation and the obsidian platform work like in vanilla).
 `/magicreset` (or `/mr`) without arguments opens an in-game menu built with the server-side dialog screens
 (Minecraft 1.21.6+, no client mod needed). Admins can change reset, timer, goal, worlds/seed/backups, death rules
 and manhunt settings there; every section needs the same permission as the matching command. Players without
-admin permissions see an info view with the run status and the leaderboard. `/manhunt` (`/mm`) opens the
+admin permissions see an info view with the run status and the leaderboard.
+
+Every setting of `config.yml` can be changed in the menu: switches, sliders and choices, and text fields that
+name an example of what to type. The goal is chosen with buttons; mobs, blocks, items and advancements are
+picked from a search (with popular choices before typing anything), dimensions with one click. `/manhunt` (`/mm`) opens the
 manhunt section directly.
 
 ## Commands

@@ -183,6 +183,10 @@ public final class MagicReset extends JavaPlugin {
         return this.goals;
     }
 
+    public AutoResetScheduler autoReset() {
+        return this.autoReset;
+    }
+
     public DialogMenu menu() {
         return this.menu;
     }
