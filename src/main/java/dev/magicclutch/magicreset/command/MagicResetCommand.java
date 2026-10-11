@@ -116,7 +116,10 @@ public final class MagicResetCommand {
                 })))
             .then(this.autoResetNode())
             .then(Commands.literal("scoreboard").requires(permission("scoreboard")).executes(this::toggleScoreboard))
-            .then(Commands.literal("radar").requires(permission("radar")).executes(this::toggleRadar))
+            .then(Commands.literal("locatorbar").requires(permission("locatorbar"))
+                .executes(ctx -> this.setLocatorBar(ctx, !this.settings().worlds().locatorBar()))
+                .then(Commands.literal("on").executes(ctx -> this.setLocatorBar(ctx, true)))
+                .then(Commands.literal("off").executes(ctx -> this.setLocatorBar(ctx, false))))
             .then(Commands.literal("status").executes(this::status))
             .then(Commands.literal("reload").requires(permission("reload")).executes(this::reload));
 
@@ -650,10 +653,10 @@ public final class MagicResetCommand {
         return Command.SINGLE_SUCCESS;
     }
 
-    private int toggleRadar(CommandContext<CommandSourceStack> ctx) {
-        boolean enabled = this.hud.toggleRadar();
-        this.game.saveAsync();
-        this.messages().send(sender(ctx), enabled ? "radar.enabled" : "radar.disabled");
+    private int setLocatorBar(CommandContext<CommandSourceStack> ctx, boolean enabled) {
+        this.plugin.setConfigValue("worlds.locator-bar", enabled);
+        this.plugin.worlds().applyLocatorBar();
+        this.messages().send(sender(ctx), enabled ? "locator-bar.enabled" : "locator-bar.disabled");
         return Command.SINGLE_SUCCESS;
     }
 
@@ -687,7 +690,7 @@ public final class MagicResetCommand {
             Placeholder.unparsed("death-mode", settings.deaths().mode().name().toLowerCase(Locale.ROOT)),
             Placeholder.unparsed("auto-reset", this.autoReset.describe()),
             Placeholder.unparsed("paused-players", Integer.toString(this.game.pausedPlayers())),
-            Placeholder.unparsed("radar", this.hud.isRadarEnabled() ? "on" : "off"));
+            Placeholder.unparsed("locator-bar", settings.worlds().locatorBar() ? "on" : "off"));
         for (Component line : this.messages().list("status", resolvers)) {
             sender.sendMessage(line);
         }

@@ -90,6 +90,7 @@ public final class MagicReset extends JavaPlugin {
                 return;
             }
             this.started = true;
+            this.game.startPreloader();
             this.hud.start();
             this.autoReset.start();
             this.getServer().getScheduler().runTaskTimer(this, this.game::saveAsync, AUTOSAVE_TICKS, AUTOSAVE_TICKS);

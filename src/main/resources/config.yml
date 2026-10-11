@@ -30,6 +30,9 @@ worlds:
   bonus-chest: false
   # Show hardcore hearts in the game worlds (purely visual, see "deaths" for the rules).
   hardcore-hearts: false
+  # The vanilla locator bar (shows other players above the hotbar) in the game worlds.
+  # Also /magicreset locatorbar on|off.
+  locator-bar: true
   # PEACEFUL, EASY, NORMAL or HARD
   difficulty: NORMAL
   # World border diameter in blocks, 0 keeps the vanilla border.
@@ -70,6 +73,14 @@ reset:
   countdown: 5
   # Countdown (seconds) in limbo after the new world is ready.
   limbo-countdown: 5
+  # Keep the next overworld generated in the background (with a safe spawn and loaded chunks). A reset
+  # then moves everybody straight into it - no limbo, no waiting. The limbo is only used when nothing is
+  # preloaded (yet), for a reset with a different seed, or for the first world. If the seed or world
+  # settings change, the preloaded world is thrown away and generated again with the new settings.
+  # The old worlds are still backed up and deleted after the reset; nether/end are regenerated then.
+  preload: true
+  # Seconds after a run started before the next overworld is generated (avoids lag at the start).
+  preload-delay: 15
   # Also register /reset as a shortcut for /magicreset reset (needs a restart).
   shortcut-command: true
   # Reset all scores of the main scoreboard (vanilla /scoreboard objectives) on every reset.
@@ -163,11 +174,3 @@ scoreboard:
   enabled-by-default: true
   update-interval: 10
 
-radar:
-  # Show the nearest player (name, distance, direction) next to the timer.
-  # Can also be toggled with /magicreset radar.
-  enabled: false
-  # Only while holding a compass.
-  require-compass: true
-  # Maximum distance in blocks, 0 = unlimited.
-  max-distance: 0

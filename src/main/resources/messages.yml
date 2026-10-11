@@ -133,13 +133,10 @@ hud:
     failed: '<red>✘ <bold><time></bold>'
     waiting: '<gray>Move to start the timer'
     idle: '<gray><bold><time></bold>'
-  radar:
-    target: '<aqua><arrow></aqua> <white><player></white> <gray><distance>m'
-    none: '<gray>No player nearby'
 
-radar:
-  enabled: '<prefix><green>Radar enabled.'
-  disabled: '<prefix><gray>Radar disabled.'
+locator-bar:
+  enabled: '<prefix><green>Locator bar enabled in the game worlds.'
+  disabled: '<prefix><gray>Locator bar disabled in the game worlds.'
 
 scoreboard:
   shown: '<prefix><green>Sidebar shown.'
@@ -207,7 +204,7 @@ status:
   - '<gray>Goal: <white><goal>'
   - '<gray>Deaths: <white><deaths></white> <dark_gray>(rules: <death-mode>)'
   - '<gray>Auto reset: <white><auto-reset>'
-  - '<gray>Paused players: <white><paused-players></white> <dark_gray>|</dark_gray> radar: <white><radar>'
+  - '<gray>Paused players: <white><paused-players></white> <dark_gray>|</dark_gray> locator bar: <white><locator-bar>'
 
 help:
   - '<gradient:#a855f7:#6366f1><bold>MagicReset</bold></gradient> <dark_gray>- commands (alias /mr)'
@@ -224,5 +221,5 @@ help:
   - '<white>/magicreset leaderboard <gray>[clear] - best times of the current goal'
   - '<white>/magicreset autoreset <gray>[off | in \<duration> [loop] | at \<HH:mm> [loop]]'
   - '<white>/magicreset scoreboard <gray>- toggle your sidebar'
-  - '<white>/magicreset radar <gray>- toggle the player radar'
+  - '<white>/magicreset locatorbar <gray>[on|off] - the vanilla locator bar in the game worlds'
   - '<white>/magicreset status <gray>| <white>reload'

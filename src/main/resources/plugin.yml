@@ -22,7 +22,7 @@ permissions:
       magicreset.command.leaderboard: true
       magicreset.command.backup: true
       magicreset.command.autoreset: true
-      magicreset.command.radar: true
+      magicreset.command.locatorbar: true
       magicreset.command.reload: true
       magicreset.command.scoreboard: true
       magicreset.limbo.bypass: true
@@ -62,8 +62,8 @@ permissions:
   magicreset.command.autoreset:
     description: Schedule automatic resets.
     default: op
-  magicreset.command.radar:
-    description: Toggle the player radar.
+  magicreset.command.locatorbar:
+    description: Turn the locator bar in the game worlds on or off.
     default: op
   magicreset.command.reload:
     description: Reload config.yml and messages.yml.

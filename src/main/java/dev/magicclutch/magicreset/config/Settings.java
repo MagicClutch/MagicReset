@@ -37,6 +37,7 @@ public final class Settings {
         boolean generateStructures,
         boolean bonusChest,
         boolean hardcoreHearts,
+        boolean locatorBar,
         Difficulty difficulty,
         double borderSize,
         Map<String, String> gameRules
@@ -68,6 +69,8 @@ public final class Settings {
         int limboCountdown,
         boolean shortcutCommand,
         boolean clearScoreboardScores,
+        boolean preload,
+        int preloadDelay,
         PlayerReset player
     ) {
     }
@@ -101,8 +104,6 @@ public final class Settings {
     public record Scoreboard(boolean enabledByDefault, int updateInterval) {
     }
 
-    public record Radar(boolean enabled, boolean requireCompass, int maxDistance) {
-    }
 
     private final Worlds worlds;
     private final SeedMode seedMode;
@@ -117,7 +118,6 @@ public final class Settings {
     private final Deaths deaths;
     private final AutoReset autoReset;
     private final Scoreboard scoreboard;
-    private final Radar radar;
 
     private final Logger logger;
 
@@ -145,6 +145,7 @@ public final class Settings {
             config.getBoolean("worlds.generate-structures", true),
             config.getBoolean("worlds.bonus-chest", false),
             config.getBoolean("worlds.hardcore-hearts", false),
+            config.getBoolean("worlds.locator-bar", true),
             this.enumValue(Difficulty.class, config.getString("worlds.difficulty"), Difficulty.NORMAL, "worlds.difficulty"),
             Math.max(0d, config.getDouble("worlds.world-border", 0d)),
             Collections.unmodifiableMap(rules)
@@ -169,6 +170,8 @@ public final class Settings {
             Math.max(0, config.getInt("reset.limbo-countdown", 5)),
             config.getBoolean("reset.shortcut-command", true),
             config.getBoolean("reset.clear-scoreboard-scores", false),
+            config.getBoolean("reset.preload", true),
+            Math.max(0, config.getInt("reset.preload-delay", 15)),
             new PlayerReset(
                 config.getBoolean("reset.player.clear-inventory", true),
                 config.getBoolean("reset.player.clear-ender-chest", true),
@@ -234,11 +237,7 @@ public final class Settings {
             Math.clamp(config.getInt("scoreboard.update-interval", 10), 1, 100)
         );
 
-        this.radar = new Radar(
-            config.getBoolean("radar.enabled", false),
-            config.getBoolean("radar.require-compass", true),
-            Math.max(0, config.getInt("radar.max-distance", 0))
-        );
+
     }
 
     private Goal readGoal(FileConfiguration config) {
@@ -328,7 +327,5 @@ public final class Settings {
         return this.scoreboard;
     }
 
-    public Radar radar() {
-        return this.radar;
-    }
+
 }

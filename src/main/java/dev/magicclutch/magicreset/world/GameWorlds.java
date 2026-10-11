@@ -64,12 +64,18 @@ public final class GameWorlds {
     }
 
     public static final String LIMBO_PATH = "limbo";
+    /**
+     * The game overworld alternates between two folders so the next one can be generated in the background
+     * (reset.preload) while the current one is played.
+     */
+    public static final List<String> OVERWORLD_SLOTS = List.of("overworld", "overworld_b");
     private static final Set<String> KEPT_FILES = Set.of("paper-world.yml");
 
     private final Logger logger;
     private final Supplier<Settings> settings;
     private final String namespace;
     private final boolean mainNetherEnd;
+    private String overworldSlot = OVERWORLD_SLOTS.getFirst();
 
     /**
      * @param namespace     fixed for the lifetime of the plugin instance; changing it requires a restart
@@ -82,6 +88,63 @@ public final class GameWorlds {
         this.mainNetherEnd = mainNetherEnd;
     }
 
+    /** Folder name of the overworld of the current run. */
+    public String overworldSlot() {
+        return this.overworldSlot;
+    }
+
+    public void setOverworldSlot(String slot) {
+        this.overworldSlot = OVERWORLD_SLOTS.contains(slot) ? slot : OVERWORLD_SLOTS.getFirst();
+    }
+
+    /** The slot that is not played right now, used for the preloaded next overworld. */
+    public String standbySlot() {
+        return this.overworldSlot.equals(OVERWORLD_SLOTS.get(0)) ? OVERWORLD_SLOTS.get(1) : OVERWORLD_SLOTS.get(0);
+    }
+
+    public NamespacedKey standbyKey() {
+        return new NamespacedKey(this.namespace, this.standbySlot());
+    }
+
+    public @Nullable World standby() {
+        return Bukkit.getWorld(this.standbyKey());
+    }
+
+    public Path standbyFolder() {
+        return this.dimensionsRoot().resolve(this.namespace).resolve(this.standbySlot());
+    }
+
+    /** Makes the preloaded overworld the game overworld. */
+    public void swapOverworldSlots() {
+        this.overworldSlot = this.standbySlot();
+    }
+
+    /** Creates (or loads) the next overworld in the standby slot. */
+    public @Nullable World createStandby(long seed) {
+        World existing = this.standby();
+        return existing != null ? existing : this.create(WorldCreator.ofKey(this.standbyKey()), Dimension.OVERWORLD, seed);
+    }
+
+    /**
+     * Deletes an overworld slot folder (an old game overworld or a discarded standby), optionally backing it
+     * up first. May run off the main thread.
+     */
+    public void wipeOverworldSlot(Path folder, @Nullable Path backup) throws IOException {
+        Path normalized = folder.toAbsolutePath().normalize();
+        Path parent = normalized.getParent();
+        boolean expected = parent != null && parent.getFileName().toString().equals(this.namespace)
+            && OVERWORLD_SLOTS.contains(normalized.getFileName().toString())
+            && parent.getParent() != null && parent.getParent().getFileName().toString().equals("dimensions")
+            && !this.namespace.equals(NamespacedKey.MINECRAFT);
+        if (!expected) {
+            throw new IOException("Refusing to delete unexpected folder " + normalized);
+        }
+        if (backup != null) {
+            WorldFiles.moveContents(normalized, backup, KEPT_FILES);
+        }
+        WorldFiles.wipe(normalized, KEPT_FILES);
+    }
+
     public boolean usesMainNetherEnd() {
         return this.mainNetherEnd;
     }
@@ -91,7 +154,10 @@ public final class GameWorlds {
     }
 
     public NamespacedKey key(Dimension dimension) {
-        if (this.mainNetherEnd && dimension != Dimension.OVERWORLD) {
+        if (dimension == Dimension.OVERWORLD) {
+            return new NamespacedKey(this.namespace, this.overworldSlot);
+        }
+        if (this.mainNetherEnd) {
             return NamespacedKey.minecraft(dimension.path());
         }
         return new NamespacedKey(this.namespace(), dimension.path());
@@ -215,8 +281,12 @@ public final class GameWorlds {
         if (existing != null) {
             return existing;
         }
+        return this.create(this.creator(dimension), dimension, seed);
+    }
+
+    private @Nullable World create(WorldCreator base, Dimension dimension, long seed) {
         Settings.Worlds config = this.settings.get().worlds();
-        WorldCreator creator = this.creator(dimension)
+        WorldCreator creator = base
             .environment(dimension.environment())
             .seed(seed)
             .type(config.type())
@@ -227,11 +297,11 @@ public final class GameWorlds {
         try {
             world = Bukkit.createWorld(creator);
         } catch (RuntimeException e) {
-            this.logger.log(Level.SEVERE, "Failed to create world " + this.key(dimension), e);
+            this.logger.log(Level.SEVERE, "Failed to create world " + creator.key(), e);
             return null;
         }
         if (world == null) {
-            this.logger.severe("Failed to create world " + this.key(dimension));
+            this.logger.severe("Failed to create world " + creator.key());
             return null;
         }
         this.applySettings(world);
@@ -259,7 +329,14 @@ public final class GameWorlds {
             world.getWorldBorder().setCenter(center.getBlockX() + 0.5, center.getBlockZ() + 0.5);
             world.getWorldBorder().setSize(config.borderSize());
         }
+        world.setGameRule(GameRules.LOCATOR_BAR, config.locatorBar());
         config.gameRules().forEach((name, value) -> this.applyGameRule(world, name, value));
+    }
+
+    /** Applies worlds.locator-bar to the loaded game worlds right away. */
+    public void applyLocatorBar() {
+        boolean enabled = this.settings.get().worlds().locatorBar();
+        this.loadedGameWorlds().forEach(world -> world.setGameRule(GameRules.LOCATOR_BAR, enabled));
     }
 
     @SuppressWarnings("unchecked")

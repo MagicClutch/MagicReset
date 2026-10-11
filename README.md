@@ -3,7 +3,7 @@
 A Paper plugin for **Minecraft 26.2** that resets the game worlds **without restarting the server**.
 While the new world is generated, everybody waits in a **limbo**. Built for speedruns, challenges and manhunts:
 seed selection, a real-time / in-game timer in the action bar, goals, death rules, scheduled resets,
-a sidebar and a player radar.
+a sidebar and a locator bar switch.
 
 ## Features
 
@@ -32,7 +32,9 @@ a sidebar and a player radar.
 - **Leaderboard** – the fastest times per goal and timer mode with name and date, shown as the sidebar in the limbo
   (`/mr leaderboard`). Stored in `plugins/MagicReset/leaderboard.yml`.
 - **Sidebar** with run number, time, goal progress, deaths and lives (toggle per player with `/mr scoreboard`).
-- **Radar** – shows the nearest player with distance and direction while holding a compass.
+- **Preloaded next world** – the next overworld is generated in the background (`reset.preload`), so a reset moves
+  everybody straight into it without the limbo. Changed seed or world settings regenerate it automatically.
+- **Locator bar** – `worlds.locator-bar` / `/mr locatorbar on|off` switches the vanilla locator bar in the game worlds.
 - All texts are in English and fully editable in `messages.yml` (MiniMessage).
 
 ## Requirements
@@ -58,7 +60,8 @@ world/
 │   │   ├── the_nether/   <- game nether: deleted and regenerated on every reset
 │   │   └── the_end/      <- game end:    deleted and regenerated on every reset (dragon fight starts fresh)
 │   └── magicreset/
-│       ├── overworld/    <- game overworld: deleted and regenerated on every reset
+│       ├── overworld/    <- game overworld (alternates with overworld_b, the preloaded next one)
+│       ├── overworld_b/
 │       └── limbo/        <- waiting room, kept
 ├── players/              <- player data, never deleted (players are reset via the API)
 └── data/                 <- shared data, never deleted
@@ -108,7 +111,7 @@ Main command `/magicreset`, alias `/mr`. `/reset` is registered as a shortcut fo
 | `/mr deaths off\|hardcore\|lives <n>` | Death rules. |
 | `/mr autoreset [off \| in <duration> [loop] \| at <HH:mm> [loop]]` | Scheduled resets. |
 | `/mr scoreboard` | Toggle your sidebar. |
-| `/mr radar` | Toggle the player radar. |
+| `/mr locatorbar [on\|off]` | Switch the vanilla locator bar in the game worlds. |
 | `/mr leaderboard [clear]` | Best times of the current goal and timer mode (also shown as the sidebar in the limbo). |
 | `/mr backup [on\|off]` | Show or switch world backups. |
 | `/mr seed show on\|off` | Show or hide the seed for players. |
@@ -134,7 +137,7 @@ Settings changed by commands are written back into `config.yml` (comments are ke
 | `magicreset.command.backup` | op | Switch world backups. |
 | `magicreset.command.leaderboard` | op | Clear the leaderboard (viewing is allowed for everyone). |
 | `magicreset.command.autoreset` | op | Scheduled resets. |
-| `magicreset.command.radar` | op | Toggle the radar. |
+| `magicreset.command.locatorbar` | op | Switch the locator bar. |
 | `magicreset.command.reload` | op | Reload. |
 | `magicreset.limbo.bypass` | op | Build and interact in the limbo. |
 

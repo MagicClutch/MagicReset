@@ -119,6 +119,10 @@ public final class GameManager {
     private @Nullable ConfigurationSection loadedExtra;
     /** The last reset failed half way; the old run cannot be continued. */
     private boolean resetFailed;
+    private final Preloader preloader;
+    /** Old worlds of an instant (preloaded) reset are still being backed up and deleted. */
+    private boolean cleaningUp;
+    private long runStartedNanos = System.nanoTime();
     /** The new world is generated, players are only waiting for the limbo countdown. */
     private boolean awaitingRelease;
     private Phase savedPhase = Phase.RESETTING;
@@ -128,6 +132,19 @@ public final class GameManager {
         this.worlds = worlds;
         this.timers = timers;
         this.goals = goals;
+        this.preloader = new Preloader(plugin, worlds, this.io, this::nextSeed, this::canPreload);
+    }
+
+    /** Preloading waits a bit after a run started so it does not compete with the start of the run. */
+    private boolean canPreload() {
+        long sinceStart = System.nanoTime() - this.runStartedNanos;
+        return this.phase == Phase.RUNNING && !this.cleaningUp
+            && sinceStart >= TimeUnit.SECONDS.toNanos(this.settings().reset().preloadDelay());
+    }
+
+    /** Starts background preloading; called once after {@link #start()}. */
+    public void startPreloader() {
+        this.preloader.start();
     }
 
     private Settings settings() {
@@ -203,6 +220,7 @@ public final class GameManager {
     }
 
     public void shutdown() {
+        this.preloader.stop();
         this.cancelCountdownTask();
         this.saveNow();
         this.io.shutdown();
@@ -228,7 +246,7 @@ public final class GameManager {
      * @return message key describing why the reset could not start, or {@code null} on success
      */
     public @Nullable String requestReset(@Nullable String seedInput, int countdown, int limboCountdown) {
-        if (this.phase == Phase.RESETTING) {
+        if (this.phase == Phase.RESETTING || this.cleaningUp) {
             return "reset.already-resetting";
         }
         if (this.phase == Phase.COUNTDOWN || this.phase == Phase.RESUMING) {
@@ -267,7 +285,9 @@ public final class GameManager {
 
     private void executeReset(@Nullable Long requestedSeed, int limboCountdown) {
         this.cancelCountdown(false);
-        long newSeed = requestedSeed != null ? requestedSeed : this.nextSeed();
+        // a preloaded overworld lets everybody go straight into the new run without the limbo
+        Preloader.Ready ready = this.phase == Phase.RESETTING || this.worlds.overworld() == null ? null : this.preloader.take(requestedSeed);
+        long newSeed = ready != null ? ready.seed() : requestedSeed != null ? requestedSeed : this.nextSeed();
         this.phase = Phase.RESETTING;
         this.outcome = Outcome.NONE;
         this.deaths = 0;
@@ -277,6 +297,10 @@ public final class GameManager {
         this.saveAsync();
 
         this.messages().send(Bukkit.getServer(), "reset.started", Placeholder.unparsed("worlds", this.resetWorldList()));
+        if (ready != null) {
+            this.instantReset(ready);
+            return;
+        }
         this.showBossBar(this.messages().get("bossbar.moving"), 0f, BossBar.Color.PURPLE);
         for (Player player : Bukkit.getOnlinePlayers()) {
             this.sendToLimbo(player);
@@ -327,8 +351,7 @@ public final class GameManager {
         List<Path> leftovers = this.worlds.leftoverFolders();
         Settings.Backups backups = this.settings().backups();
         Path backupRoot = backups.enabled() ? this.backupRoot() : null;
-        Path backup = backupRoot == null ? null : backupRoot.resolve(
-            DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss", Locale.ROOT).format(LocalDateTime.now()) + "_run-" + this.run);
+        Path backup = this.newBackupFolder(backupRoot, this.run);
         String backupInfo = "run: " + this.run + "\nseed: " + this.seed + "\nworlds: " + this.resetWorldList() + "\n";
         // give the chunk system a moment to release the region files before deleting them
         Bukkit.getScheduler().runTaskLater(this.plugin, () -> CompletableFuture.runAsync(() -> {
@@ -360,6 +383,131 @@ public final class GameManager {
             }
             this.generate(newSeed, limboCountdown, 0);
         })), 10L);
+    }
+
+    private static @Nullable Path newBackupFolder(@Nullable Path backupRoot, int run) {
+        return backupRoot == null ? null : backupRoot.resolve(
+            DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss", Locale.ROOT).format(LocalDateTime.now()) + "_run-" + run);
+    }
+
+    /**
+     * Reset with a preloaded overworld: everybody moves straight into it, the old worlds are backed up and
+     * deleted afterwards and nether/end are regenerated in the background.
+     */
+    private void instantReset(Preloader.Ready ready) {
+        int oldRun = this.run;
+        long oldSeed = this.seed;
+        String oldWorlds = this.resetWorldList();
+        World oldOverworld = this.worlds.overworld();
+        Path oldOverworldFolder = oldOverworld != null ? oldOverworld.getWorldPath() : this.worlds.folder(GameWorlds.Dimension.OVERWORLD);
+
+        this.worlds.swapOverworldSlots();
+        World overworld = this.worlds.overworld();
+        if (overworld == null) {
+            this.worlds.swapOverworldSlots();
+            this.plugin.getLogger().warning("The preloaded overworld is gone, resetting the normal way");
+            this.phase = Phase.RUNNING;
+            this.executeReset(ready.seed(), this.settings().reset().limboCountdown());
+            return;
+        }
+        Location newSpawn = ready.spawn();
+        newSpawn.setWorld(overworld);
+        overworld.setSpawnLocation(newSpawn);
+        if (this.settings().worlds().borderSize() > 0) {
+            overworld.getWorldBorder().setCenter(newSpawn.getBlockX() + 0.5, newSpawn.getBlockZ() + 0.5);
+        }
+        if (this.settings().reset().clearScoreboardScores()) {
+            Scoreboard main = Bukkit.getScoreboardManager().getMainScoreboard();
+            new ArrayList<>(main.getEntries()).forEach(main::resetScores);
+        }
+        this.spawn = newSpawn.clone();
+        this.seed = ready.seed();
+        this.run++;
+        this.resetFailed = false;
+        this.cleaningUp = true;
+        this.plugin.getLogger().info("Run #" + this.run + " started with the preloaded overworld (seed " + this.seed + ")");
+        this.messages().send(Bukkit.getServer(), this.settings().showSeed() ? "reset.ready" : "reset.ready-no-seed", this.seedPlaceholder());
+        this.startRun();
+
+        Path backupRoot = this.settings().backups().enabled() ? this.backupRoot() : null;
+        Path backup = newBackupFolder(backupRoot, oldRun);
+        String backupInfo = "run: " + oldRun + "\nseed: " + oldSeed + "\nworlds: " + oldWorlds + "\n";
+        Bukkit.getScheduler().runTask(this.plugin, () -> this.cleanUpOldWorlds(oldOverworld, oldOverworldFolder, backupRoot, backup, backupInfo, 0));
+    }
+
+    private void cleanUpOldWorlds(@Nullable World oldOverworld, Path oldOverworldFolder, @Nullable Path backupRoot,
+                                  @Nullable Path backup, String backupInfo, int attempt) {
+        Location target = this.spawn();
+        Map<GameWorlds.Dimension, Path> folders = new EnumMap<>(GameWorlds.Dimension.class);
+        boolean unloaded = true;
+        if (oldOverworld != null && Bukkit.getWorld(oldOverworld.getKey()) != null) {
+            oldOverworld.getPlayers().forEach(player -> this.placeIntoRun(player));
+            unloaded = Bukkit.unloadWorld(oldOverworld, false);
+        }
+        for (GameWorlds.Dimension dimension : List.of(GameWorlds.Dimension.NETHER, GameWorlds.Dimension.END)) {
+            if (!this.worlds.isEnabled(dimension)) {
+                continue;
+            }
+            World world = this.worlds.world(dimension);
+            if (world != null && target != null) {
+                world.getPlayers().forEach(player -> player.teleport(target));
+            }
+            folders.put(dimension, world != null ? world.getWorldPath() : this.worlds.folder(dimension));
+            if (!this.worlds.unload(dimension)) {
+                unloaded = false;
+            }
+        }
+        if (!unloaded) {
+            if (attempt < 40) {
+                Bukkit.getScheduler().runTaskLater(this.plugin,
+                    () -> this.cleanUpOldWorlds(oldOverworld, oldOverworldFolder, backupRoot, backup, backupInfo, attempt + 1), 5L);
+                return;
+            }
+            this.plugin.getLogger().severe("Could not unload the old worlds, they stay on disk");
+            this.cleaningUp = false;
+            return;
+        }
+        Bukkit.getScheduler().runTaskLater(this.plugin, () -> CompletableFuture.runAsync(() -> {
+            try {
+                this.worlds.wipeOverworldSlot(oldOverworldFolder,
+                    backup == null ? null : backup.resolve(oldOverworldKeyName(oldOverworldFolder)));
+            } catch (IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+            for (Map.Entry<GameWorlds.Dimension, Path> entry : folders.entrySet()) {
+                Path folderBackup = backup == null ? null : backup.resolve(this.worlds.key(entry.getKey()).asString().replace(':', '_'));
+                this.wipeWithRetry(entry.getKey(), entry.getValue(), folderBackup);
+            }
+            if (backup != null && Files.isDirectory(backup)) {
+                try {
+                    Files.writeString(backup.resolve("info.yml"), backupInfo, StandardCharsets.UTF_8);
+                    WorldFiles.prune(backupRoot, this.settings().backups().keep());
+                } catch (IOException e) {
+                    this.plugin.getLogger().warning("Could not finish the backup " + backup + ": " + e.getMessage());
+                }
+            }
+        }, this.io).whenComplete((ignored, error) -> Bukkit.getScheduler().runTask(this.plugin, () -> {
+            if (error != null) {
+                this.plugin.getLogger().log(Level.SEVERE, "Failed to delete the old worlds", error);
+            }
+            // nether and end of the new run, one per tick
+            Bukkit.getScheduler().runTask(this.plugin, () -> {
+                if (this.worlds.isEnabled(GameWorlds.Dimension.NETHER)) {
+                    this.worlds.loadOrCreate(GameWorlds.Dimension.NETHER, this.seed);
+                }
+                Bukkit.getScheduler().runTask(this.plugin, () -> {
+                    if (this.worlds.isEnabled(GameWorlds.Dimension.END)) {
+                        this.worlds.loadOrCreate(GameWorlds.Dimension.END, this.seed);
+                    }
+                    this.cleaningUp = false;
+                    this.saveAsync();
+                });
+            });
+        })), 10L);
+    }
+
+    private String oldOverworldKeyName(Path folder) {
+        return this.worlds.namespace() + "_" + folder.getFileName();
     }
 
     /** Where backups are stored: relative paths are inside the plugin folder. */
@@ -454,6 +602,7 @@ public final class GameManager {
 
     private void startRun() {
         this.phase = Phase.RUNNING;
+        this.runStartedNanos = System.nanoTime();
         this.awaitingRelease = false;
         World overworld = this.worlds.overworld();
         if (overworld != null) {
@@ -1128,6 +1277,8 @@ public final class GameManager {
         }
         this.timers.load(data.getConfigurationSection("timer"));
         this.goals.load(data.getConfigurationSection("goal-progress"));
+        this.worlds.setOverworldSlot(data.getString("overworld-slot", GameWorlds.OVERWORLD_SLOTS.getFirst()));
+        this.preloader.load(data.getConfigurationSection("preload"));
         this.loadedExtra = data.getConfigurationSection("extra");
         try {
             return Phase.valueOf(data.getString("phase", Phase.RESETTING.name()));
@@ -1167,6 +1318,8 @@ public final class GameManager {
         this.snapshots.forEach((uuid, snapshot) -> snapshot.save(pausedSection.createSection(uuid.toString())));
         this.timers.save(data.createSection("timer"));
         this.goals.save(data.createSection("goal-progress"));
+        data.set("overworld-slot", this.worlds.overworldSlot());
+        this.preloader.save(data.createSection("preload"));
         this.plugin.saveExtra(data.createSection("extra"));
         return data.saveToString();
     }

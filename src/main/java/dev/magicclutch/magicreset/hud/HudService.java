@@ -27,8 +27,6 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
-import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -42,11 +40,10 @@ import org.bukkit.scoreboard.Scoreboard;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Ticks the timers and renders the action bar (timer + radar) and the sidebar.
+ * Ticks the timers and renders the action bar timer and the sidebar.
  */
 public final class HudService implements Listener {
 
-    private static final String[] ARROWS = {"⬆", "⬈", "➡", "⬊", "⬇", "⬋", "⬅", "⬉"};
     private static final String OBJECTIVE = "magicreset";
 
     private final MagicReset plugin;
@@ -142,15 +139,7 @@ public final class HudService implements Listener {
         if (!this.worlds.isGameWorld(player.getWorld())) {
             return null;
         }
-        Component timer = this.settings().timer().actionBar() ? this.timerLine(player) : null;
-        Component radar = this.radarLine(player);
-        if (timer == null) {
-            return radar;
-        }
-        if (radar == null) {
-            return timer;
-        }
-        return Component.empty().append(timer).append(text.get("hud.separator")).append(radar);
+        return this.settings().timer().actionBar() ? this.timerLine(player) : null;
     }
 
     private @Nullable Component timerLine(Player player) {
@@ -182,55 +171,6 @@ public final class HudService implements Listener {
         );
     }
 
-    private @Nullable Component radarLine(Player player) {
-        Settings.Radar config = this.settings().radar();
-        if (!config.enabled() || player.getGameMode() == GameMode.SPECTATOR) {
-            return null;
-        }
-        if (config.requireCompass()
-            && player.getInventory().getItemInMainHand().getType() != Material.COMPASS
-            && player.getInventory().getItemInOffHand().getType() != Material.COMPASS) {
-            return null;
-        }
-        Location origin = player.getLocation();
-        Player nearest = null;
-        double best = Double.MAX_VALUE;
-        for (Player other : player.getWorld().getPlayers()) {
-            if (other == player || other.getGameMode() == GameMode.SPECTATOR) {
-                continue;
-            }
-            double distance = other.getLocation().distanceSquared(origin);
-            if (distance < best) {
-                best = distance;
-                nearest = other;
-            }
-        }
-        double distance = Math.sqrt(best);
-        if (nearest == null || (config.maxDistance() > 0 && distance > config.maxDistance())) {
-            return this.messages().get("hud.radar.none");
-        }
-        Location target = nearest.getLocation();
-        double dx = target.getX() - origin.getX();
-        double dz = target.getZ() - origin.getZ();
-        // Minecraft yaw: 0 = +Z (south), 90 = -X (west); it grows when turning right
-        double targetYaw = Math.toDegrees(Math.atan2(-dx, dz));
-        double relative = ((targetYaw - origin.getYaw()) % 360 + 540) % 360 - 180;
-        int index = Math.floorMod((int) Math.round(relative / 45d), 8);
-        return this.messages().get("hud.radar.target",
-            Placeholder.unparsed("player", nearest.getName()),
-            Placeholder.unparsed("distance", Long.toString(Math.round(distance))),
-            Placeholder.unparsed("arrow", ARROWS[index]));
-    }
-
-    public boolean toggleRadar() {
-        boolean enabled = !this.settings().radar().enabled();
-        this.plugin.setConfigValue("radar.enabled", enabled);
-        return enabled;
-    }
-
-    public boolean isRadarEnabled() {
-        return this.settings().radar().enabled();
-    }
 
     // ---------------------------------------------------------------------------------------------------------
     // Sidebar
