@@ -10,6 +10,7 @@ import dev.magicclutch.magicreset.timer.TimerScope;
 import dev.magicclutch.magicreset.timer.TimerService;
 import dev.magicclutch.magicreset.util.Seeds;
 import dev.magicclutch.magicreset.util.TimeFormat;
+import dev.magicclutch.magicreset.util.WorldFiles;
 import dev.magicclutch.magicreset.world.GameWorlds;
 import dev.magicclutch.magicreset.world.SpawnFinder;
 import java.io.File;
@@ -19,9 +20,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -321,10 +325,25 @@ public final class GameManager {
 
         this.showBossBar(this.messages().get("bossbar.deleting"), 0.15f, BossBar.Color.PURPLE);
         List<Path> leftovers = this.worlds.leftoverFolders();
+        Settings.Backups backups = this.settings().backups();
+        Path backupRoot = backups.enabled() ? this.backupRoot() : null;
+        Path backup = backupRoot == null ? null : backupRoot.resolve(
+            DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss", Locale.ROOT).format(LocalDateTime.now()) + "_run-" + this.run);
+        String backupInfo = "run: " + this.run + "\nseed: " + this.seed + "\nworlds: " + this.resetWorldList() + "\n";
         // give the chunk system a moment to release the region files before deleting them
         Bukkit.getScheduler().runTaskLater(this.plugin, () -> CompletableFuture.runAsync(() -> {
             for (Map.Entry<GameWorlds.Dimension, Path> entry : folders.entrySet()) {
-                this.wipeWithRetry(entry.getKey(), entry.getValue());
+                Path target = backup == null ? null
+                    : backup.resolve(this.worlds.key(entry.getKey()).asString().replace(':', '_'));
+                this.wipeWithRetry(entry.getKey(), entry.getValue(), target);
+            }
+            if (backup != null && Files.isDirectory(backup)) {
+                try {
+                    Files.writeString(backup.resolve("info.yml"), backupInfo, StandardCharsets.UTF_8);
+                    WorldFiles.prune(backupRoot, backups.keep());
+                } catch (IOException e) {
+                    this.plugin.getLogger().warning("Could not finish the backup " + backup + ": " + e.getMessage());
+                }
             }
             for (Path leftover : leftovers) {
                 try {
@@ -343,11 +362,18 @@ public final class GameManager {
         })), 10L);
     }
 
-    private void wipeWithRetry(GameWorlds.Dimension dimension, Path folder) {
+    /** Where backups are stored: relative paths are inside the plugin folder. */
+    public Path backupRoot() {
+        Path configured = Path.of(this.settings().backups().folder());
+        return configured.isAbsolute() ? configured : this.plugin.getDataFolder().toPath().resolve(configured);
+    }
+
+    private void wipeWithRetry(GameWorlds.Dimension dimension, Path folder, @Nullable Path backup) {
         IOException last = null;
         for (int attempt = 0; attempt < 5; attempt++) {
             try {
-                this.worlds.wipe(dimension, folder);
+                // a retry continues where the last attempt stopped: already moved files are gone from the source
+                this.worlds.wipe(dimension, folder, backup);
                 return;
             } catch (IOException e) {
                 last = e;
@@ -416,7 +442,7 @@ public final class GameManager {
         this.plugin.getLogger().info("Run #" + this.run + " is ready (seed " + newSeed + ")");
 
         this.showBossBar(this.messages().get("bossbar.ready"), 1f, BossBar.Color.GREEN);
-        this.messages().send(Bukkit.getServer(), "reset.ready", this.seedPlaceholder());
+        this.messages().send(Bukkit.getServer(), this.settings().showSeed() ? "reset.ready" : "reset.ready-no-seed", this.seedPlaceholder());
         if (limboCountdown <= 0) {
             this.startRun();
             return;
@@ -970,8 +996,9 @@ public final class GameManager {
         return TimeFormat.format(millis, 3, this.settings().timer().style());
     }
 
+    /** The seed, or "hidden" when seed.show is off. */
     public TagResolver seedPlaceholder() {
-        return Placeholder.unparsed("seed", Long.toString(this.seed));
+        return Placeholder.unparsed("seed", this.settings().showSeed() ? Long.toString(this.seed) : this.messages().raw("seed.hidden"));
     }
 
     public TagResolver goalPlaceholder() {

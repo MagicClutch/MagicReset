@@ -45,6 +45,19 @@ seed:
   mode: RANDOM
   # Numbers are used as-is, text is converted like in vanilla.
   fixed: ''
+  # Show the seed to players (reset message, /magicreset status, sidebar). Admins with
+  # magicreset.command.seed always see it via /magicreset seed. Also /magicreset seed show on|off.
+  show: true
+
+backups:
+  # Before a reset deletes a world, move its files into a backup folder instead.
+  # Also /magicreset backup on|off.
+  enabled: true
+  # Relative paths are inside plugins/MagicReset/. One sub folder per reset:
+  #   backups/2026-10-11_18-30-05_run-3/minecraft_the_end/...
+  folder: backups
+  # How many backups to keep, older ones are deleted. 0 = keep all (watch your disk space!).
+  keep: 5
 
 spawn:
   # Search radius (blocks) around the world spawn for a dry, solid spawn point.

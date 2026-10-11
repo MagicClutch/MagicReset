@@ -20,6 +20,7 @@ permissions:
       magicreset.command.deaths: true
       magicreset.command.worlds: true
       magicreset.command.leaderboard: true
+      magicreset.command.backup: true
       magicreset.command.autoreset: true
       magicreset.command.radar: true
       magicreset.command.reload: true
@@ -48,6 +49,9 @@ permissions:
     default: op
   magicreset.command.deaths:
     description: Change the death rules.
+    default: op
+  magicreset.command.backup:
+    description: Turn world backups on or off.
     default: op
   magicreset.command.leaderboard:
     description: Clear the leaderboard of the current goal (viewing it is allowed for everyone).

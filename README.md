@@ -25,6 +25,10 @@ a sidebar and a player radar.
   failed or completed run.
 - **Auto reset** – after a duration (`/mr autoreset in 2h loop`) or at a time of day (`/mr autoreset at 18:00 loop`)
   with warnings.
+- **Backups** – before a reset deletes a world, its files are moved to `plugins/MagicReset/backups/<date>_run-<n>/`
+  (one folder per world plus `info.yml` with run and seed). The last 5 are kept (`backups.keep`), switch with
+  `/mr backup on|off`.
+- **Hidden seed** – `seed.show: false` (or `/mr seed show off`) hides the seed from players; admins still see it.
 - **Leaderboard** – the fastest times per goal and timer mode with name and date, shown as the sidebar in the limbo
   (`/mr leaderboard`). Stored in `plugins/MagicReset/leaderboard.yml`.
 - **Sidebar** with run number, time, goal progress, deaths and lives (toggle per player with `/mr scoreboard`).
@@ -104,6 +108,8 @@ Main command `/magicreset`, alias `/mr`. `/reset` is registered as a shortcut fo
 | `/mr scoreboard` | Toggle your sidebar. |
 | `/mr radar` | Toggle the player radar. |
 | `/mr leaderboard [clear]` | Best times of the current goal and timer mode (also shown as the sidebar in the limbo). |
+| `/mr backup [on\|off]` | Show or switch world backups. |
+| `/mr seed show on\|off` | Show or hide the seed for players. |
 | `/mr status` | Overview of the current run. |
 | `/mr reload` | Reload `config.yml` and `messages.yml`. |
 
@@ -123,6 +129,7 @@ Settings changed by commands are written back into `config.yml` (comments are ke
 | `magicreset.command.goal` | op | Goal settings. |
 | `magicreset.command.deaths` | op | Death rules. |
 | `magicreset.command.worlds` | op | Show and choose the reset worlds. |
+| `magicreset.command.backup` | op | Switch world backups. |
 | `magicreset.command.leaderboard` | op | Clear the leaderboard (viewing is allowed for everyone). |
 | `magicreset.command.autoreset` | op | Scheduled resets. |
 | `magicreset.command.radar` | op | Toggle the radar. |

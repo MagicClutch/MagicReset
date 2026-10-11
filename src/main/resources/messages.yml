@@ -19,6 +19,7 @@ dimension:
 reset:
   started: '<prefix><gray>Resetting the world... <dark_gray>(deleting <worlds>)'
   ready: '<prefix><green>The new world is ready. <gray>Seed: <white><seed>'
+  ready-no-seed: '<prefix><green>The new world is ready.'
   failed: '<prefix><red>The reset failed: <white><reason></white>. Everyone stays in limbo, try <white>/magicreset reset</white> again.'
   already-resetting: '<prefix><red>A reset is already in progress.'
   countdown-started: '<prefix><gray>The world resets in <white><seconds></white> seconds. <dark_gray>(/magicreset cancel)'
@@ -100,6 +101,9 @@ deaths:
 seed:
   current: '<prefix><gray>Current seed: <white><seed></white> <dark_gray>(next reset: <mode>)'
   click-to-copy: '<gray>Click to copy'
+  hidden: 'hidden'
+  show-on: '<prefix><green>The seed is shown to everyone again.'
+  show-off: '<prefix><gray>The seed is now hidden (only admins with /magicreset seed can see it).'
   mode-random: '<prefix><green>Every reset now uses a random seed.'
   mode-fixed: '<prefix><green>Every reset now uses the seed <white><seed></white>.'
   copied: '<prefix><green>The current seed <white><seed></white> is now the fixed seed.'
@@ -158,6 +162,10 @@ scoreboard:
     - '<gray>Lives <white><lives>'
     - '<gray>Players <white><players>'
 
+backup:
+  status-on: '<prefix><green>Backups are on.</green> <gray>Every reset moves the old worlds to <white><folder></white> (keeping the last <white><keep></white>).'
+  status-off: '<prefix><gray>Backups are <red>off</red>: old worlds are deleted on reset. <dark_gray>(folder: <folder>)'
+
 leaderboard:
   # shown as the sidebar while players wait in the limbo
   title: '<gradient:#facc15:#f97316><bold>Best times</bold></gradient>'
@@ -204,7 +212,8 @@ help:
   - '<white>/magicreset cancel <gray>- cancel a running countdown'
   - '<white>/magicreset limbo <gray>[countdown] - pause/continue the run in limbo'
   - '<white>/magicreset resume <gray>[countdown]'
-  - '<white>/magicreset seed <gray>[random | fixed \<seed> | copy]'
+  - '<white>/magicreset seed <gray>[random | fixed \<seed> | copy | show on|off]'
+  - '<white>/magicreset backup <gray>[on|off] - keep a copy of every reset world'
   - '<white>/magicreset timer <gray>[start|pause|resume|reset|set \<time>|mode|scope|trigger]'
   - '<white>/magicreset goal <gray>[none|beat|dragon|kill|dimension|advancement|break|item]'
   - '<white>/magicreset deaths <gray>[off|hardcore|lives \<n>]'

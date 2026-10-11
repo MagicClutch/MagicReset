@@ -301,12 +301,23 @@ public final class GameWorlds {
      * main thread.
      */
     public void wipe(Dimension dimension, Path folder) throws IOException {
+        this.wipe(dimension, folder, null);
+    }
+
+    /**
+     * Deletes the stored data of a game dimension, optionally moving it into {@code backup} first. Must run
+     * after {@link #unload(Dimension)}; may run off the main thread.
+     */
+    public void wipe(Dimension dimension, Path folder, @Nullable Path backup) throws IOException {
         Path normalized = folder.toAbsolutePath().normalize();
         NamespacedKey key = this.key(dimension);
         // Only ever <level>/dimensions/<namespace>/<path> of a game dimension, never the main overworld
         if (!normalized.equals(this.folder(dimension).toAbsolutePath().normalize())
             || key.equals(NamespacedKey.minecraft("overworld"))) {
             throw new IOException("Refusing to delete unexpected folder " + normalized);
+        }
+        if (backup != null) {
+            WorldFiles.moveContents(normalized, backup, KEPT_FILES);
         }
         WorldFiles.wipe(normalized, KEPT_FILES);
     }

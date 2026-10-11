@@ -103,6 +103,10 @@ public final class MagicResetCommand {
             .then(this.goalNode())
             .then(this.deathsNode())
             .then(this.worldsNode())
+            .then(Commands.literal("backup").requires(permission("backup"))
+                .executes(this::backupStatus)
+                .then(Commands.literal("on").executes(ctx -> this.setBackups(ctx, true)))
+                .then(Commands.literal("off").executes(ctx -> this.setBackups(ctx, false))))
             .then(Commands.literal("leaderboard")
                 .executes(this::showLeaderboard)
                 .then(Commands.literal("clear").requires(permission("leaderboard")).executes(ctx -> {
@@ -218,12 +222,21 @@ public final class MagicResetCommand {
                     this.messages().send(sender(ctx), "seed.mode-fixed", Placeholder.unparsed("seed", seed));
                     return Command.SINGLE_SUCCESS;
                 })))
+            .then(Commands.literal("show")
+                .then(Commands.literal("on").executes(ctx -> this.setShowSeed(ctx, true)))
+                .then(Commands.literal("off").executes(ctx -> this.setShowSeed(ctx, false))))
             .then(Commands.literal("copy").executes(ctx -> {
                 String seed = Long.toString(this.game.seed());
                 this.plugin.setConfigValues(Map.of("seed.fixed", seed, "seed.mode", SeedMode.FIXED.name()));
                 this.messages().send(sender(ctx), "seed.copied", Placeholder.unparsed("seed", seed));
                 return Command.SINGLE_SUCCESS;
             }));
+    }
+
+    private int setShowSeed(CommandContext<CommandSourceStack> ctx, boolean show) {
+        this.plugin.setConfigValue("seed.show", show);
+        this.messages().send(sender(ctx), show ? "seed.show-on" : "seed.show-off");
+        return Command.SINGLE_SUCCESS;
     }
 
     private int showSeed(CommandContext<CommandSourceStack> ctx) {
@@ -442,6 +455,21 @@ public final class MagicResetCommand {
     // deaths
     // ---------------------------------------------------------------------------------------------------------
 
+    private int setBackups(CommandContext<CommandSourceStack> ctx, boolean enabled) {
+        this.plugin.setConfigValue("backups.enabled", enabled);
+        return this.backupStatus(ctx);
+    }
+
+    private int backupStatus(CommandContext<CommandSourceStack> ctx) {
+        Settings.Backups backups = this.settings().backups();
+        Path root = this.game.backupRoot().toAbsolutePath().normalize();
+        Path serverRoot = Path.of("").toAbsolutePath();
+        this.messages().send(sender(ctx), backups.enabled() ? "backup.status-on" : "backup.status-off",
+            Placeholder.unparsed("folder", (root.startsWith(serverRoot) ? serverRoot.relativize(root) : root).toString().replace('\\', '/')),
+            Placeholder.unparsed("keep", backups.keep() == 0 ? "all" : Integer.toString(backups.keep())));
+        return Command.SINGLE_SUCCESS;
+    }
+
     private int showLeaderboard(CommandContext<CommandSourceStack> ctx) {
         this.messages().send(sender(ctx), "leaderboard.chat-header");
         for (Component line : this.hud.leaderboardLines()) {
@@ -635,7 +663,9 @@ public final class MagicResetCommand {
             Placeholder.unparsed("phase", this.game.phase().name().toLowerCase(Locale.ROOT)),
             Placeholder.unparsed("outcome", this.game.outcome().name().toLowerCase(Locale.ROOT)),
             // the seed is only shown to players who may see it via /mr seed
-            Placeholder.unparsed("seed", sender.hasPermission(PERM + "seed") ? Long.toString(this.game.seed()) : "hidden"),
+            // admins always see the seed, everyone else only when seed.show is on
+            Placeholder.unparsed("seed", sender.hasPermission(PERM + "seed") || settings.showSeed()
+                ? Long.toString(this.game.seed()) : this.messages().raw("seed.hidden")),
             Placeholder.unparsed("seed-mode", settings.seedMode().name().toLowerCase(Locale.ROOT)),
             Placeholder.unparsed("time", this.game.formatPrecise(timer.millis(settings.timer().mode()))),
             Placeholder.unparsed("timer-mode", settings.timer().mode().name()),

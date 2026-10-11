@@ -336,7 +336,7 @@ public final class HudService implements Listener {
         return TagResolver.resolver(
             this.timePlaceholders(player),
             Placeholder.unparsed("run", Integer.toString(this.game.run())),
-            Placeholder.unparsed("seed", Long.toString(this.game.seed())),
+            this.game.seedPlaceholder(),
             Placeholder.component("goal", this.goals.describe(goal)),
             Placeholder.unparsed("progress", goal.isNone() ? "-" : this.goals.progress(player) + "/" + goal.amount()),
             Placeholder.unparsed("deaths", Integer.toString(this.game.deaths())),

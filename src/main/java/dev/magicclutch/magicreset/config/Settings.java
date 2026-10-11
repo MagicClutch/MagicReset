@@ -46,6 +46,9 @@ public final class Settings {
     public record Spawn(int safeSearchRadius, int preloadRadius) {
     }
 
+    public record Backups(boolean enabled, String folder, int keep) {
+    }
+
     public record PlayerReset(
         boolean clearInventory,
         boolean clearEnderChest,
@@ -103,6 +106,8 @@ public final class Settings {
     private final Worlds worlds;
     private final SeedMode seedMode;
     private final String fixedSeed;
+    private final boolean showSeed;
+    private final Backups backups;
     private final Spawn spawn;
     private final Reset reset;
     private final Limbo limbo;
@@ -146,6 +151,12 @@ public final class Settings {
 
         this.seedMode = this.enumValue(SeedMode.class, config.getString("seed.mode"), SeedMode.RANDOM, "seed.mode");
         this.fixedSeed = config.getString("seed.fixed", "");
+        this.showSeed = config.getBoolean("seed.show", true);
+        this.backups = new Backups(
+            config.getBoolean("backups.enabled", true),
+            String.valueOf(config.getString("backups.folder", "backups")),
+            Math.max(0, config.getInt("backups.keep", 5))
+        );
 
         this.spawn = new Spawn(
             Math.clamp(config.getInt("spawn.safe-search-radius", 96), 0, 512),
@@ -273,6 +284,14 @@ public final class Settings {
 
     public String fixedSeed() {
         return this.fixedSeed;
+    }
+
+    public boolean showSeed() {
+        return this.showSeed;
+    }
+
+    public Backups backups() {
+        return this.backups;
     }
 
     public Spawn spawn() {
