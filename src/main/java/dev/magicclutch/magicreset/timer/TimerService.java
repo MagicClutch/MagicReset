@@ -19,6 +19,12 @@ public final class TimerService {
 
     /** {@code true} once the run has been released and timers may start. */
     private boolean armed;
+    /** {@code true} once timers were started for this run (needed to start late joiners in MANUAL mode). */
+    private boolean started;
+    /** {@code true} while the timers are paused by an admin or the limbo pause. */
+    private boolean paused;
+    /** {@code true} once the run has ended (goal completed or failed); no new timers start. */
+    private boolean ended;
 
     public record TimerSettings(TimerMode mode, TimerScope scope, StartTrigger trigger, boolean igtPauseWhenEmpty) {
     }
@@ -44,6 +50,9 @@ public final class TimerService {
         this.global = new RunTimer();
         this.individual.clear();
         this.armed = false;
+        this.started = false;
+        this.paused = false;
+        this.ended = false;
     }
 
     /** Called when the players are released into a fresh world. */
@@ -52,6 +61,7 @@ public final class TimerService {
         if (this.settings().trigger() != StartTrigger.AUTO) {
             return;
         }
+        this.started = true;
         if (this.scope() == TimerScope.GLOBAL) {
             this.global.start();
         } else {
@@ -63,11 +73,20 @@ public final class TimerService {
 
     /** A player joined the run after it started (late join or reconnect). */
     public void onParticipantJoin(Player player) {
-        if (!this.armed || this.scope() != TimerScope.INDIVIDUAL || this.settings().trigger() != StartTrigger.AUTO) {
+        if (!this.armed || this.ended || this.scope() != TimerScope.INDIVIDUAL) {
+            return;
+        }
+        StartTrigger trigger = this.settings().trigger();
+        if (trigger == StartTrigger.FIRST_INPUT || (trigger == StartTrigger.MANUAL && !this.started)) {
             return;
         }
         RunTimer timer = this.timer(player.getUniqueId());
-        if (timer.state() == RunTimer.State.IDLE) {
+        if (timer.state() != RunTimer.State.IDLE) {
+            return;
+        }
+        if (this.paused) {
+            timer.set(0L); // joins paused, continues with everybody else
+        } else {
             timer.start();
         }
     }
@@ -78,7 +97,8 @@ public final class TimerService {
             return;
         }
         RunTimer timer = this.scope() == TimerScope.GLOBAL ? this.global : this.timer(player.getUniqueId());
-        if (timer.state() == RunTimer.State.IDLE) {
+        if (!this.ended && timer.state() == RunTimer.State.IDLE) {
+            this.started = true;
             timer.start();
         }
     }
@@ -126,6 +146,8 @@ public final class TimerService {
     /** Starts (or resumes) the timer for the current scope. */
     public void startAll(Collection<? extends Player> participants) {
         this.armed = true;
+        this.started = true;
+        this.paused = false;
         if (this.scope() == TimerScope.GLOBAL) {
             this.global.start();
         } else {
@@ -141,11 +163,13 @@ public final class TimerService {
     }
 
     public void pauseAll() {
+        this.paused = true;
         this.global.pause();
         this.individual.values().forEach(RunTimer::pause);
     }
 
     public void resumeAll() {
+        this.paused = false;
         if (this.global.state() == RunTimer.State.PAUSED) {
             this.global.start();
         }
@@ -156,7 +180,13 @@ public final class TimerService {
         });
     }
 
+    /** Marks the run as over; timers of players joining later no longer start. */
+    public void endRun() {
+        this.ended = true;
+    }
+
     public void finishAll() {
+        this.ended = true;
         this.global.finish();
         this.individual.values().forEach(RunTimer::finish);
     }
@@ -166,8 +196,9 @@ public final class TimerService {
         this.individual.clear();
     }
 
-    public void setAll(long millis) {
+    public void setAll(long millis, Collection<? extends Player> participants) {
         this.global.set(millis);
+        participants.forEach(player -> this.timer(player.getUniqueId()));
         this.individual.values().forEach(timer -> timer.set(millis));
     }
 
@@ -177,6 +208,9 @@ public final class TimerService {
 
     public void save(ConfigurationSection section) {
         section.set("armed", this.armed);
+        section.set("started", this.started);
+        section.set("paused", this.paused);
+        section.set("ended", this.ended);
         this.global.save(section.createSection("global"));
         ConfigurationSection players = section.createSection("players");
         this.individual.forEach((uuid, timer) -> timer.save(players.createSection(uuid.toString())));
@@ -188,6 +222,9 @@ public final class TimerService {
             return;
         }
         this.armed = section.getBoolean("armed");
+        this.started = section.getBoolean("started", this.armed);
+        this.paused = section.getBoolean("paused");
+        this.ended = section.getBoolean("ended");
         this.global = RunTimer.load(section.getConfigurationSection("global"));
         ConfigurationSection players = section.getConfigurationSection("players");
         if (players != null) {

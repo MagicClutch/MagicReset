@@ -52,6 +52,8 @@ public final class HudService implements Listener {
     private final GoalService goals;
 
     private final Map<UUID, Scoreboard> sidebars = new HashMap<>();
+    /** Last lines sent per player, so unchanged lines do not cause packets. */
+    private final Map<UUID, List<Component>> sentLines = new HashMap<>();
     private final Set<UUID> sidebarToggled = new HashSet<>();
     private @Nullable BukkitTask task;
     private long tick;
@@ -258,6 +260,7 @@ public final class HudService implements Listener {
         }
         Objective objective = board.getObjective(OBJECTIVE);
         if (objective == null) {
+            this.sentLines.remove(player.getUniqueId()); // fresh board, nothing sent yet
             objective = board.registerNewObjective(OBJECTIVE, Criteria.DUMMY, this.messages().get("scoreboard.title"));
             objective.setDisplaySlot(DisplaySlot.SIDEBAR);
             objective.numberFormat(io.papermc.paper.scoreboard.numbers.NumberFormat.blank());
@@ -266,12 +269,17 @@ public final class HudService implements Listener {
 
         List<Component> lines = this.messages().list("scoreboard.lines", this.sidebarPlaceholders(player));
         int size = Math.min(lines.size(), 15);
+        List<Component> previous = this.sentLines.getOrDefault(player.getUniqueId(), List.of());
         for (int i = 0; i < size; i++) {
+            if (i < previous.size() && previous.size() == size && previous.get(i).equals(lines.get(i))) {
+                continue;
+            }
             String entry = "line" + i;
             var score = objective.getScore(entry);
             score.setScore(size - i);
             score.customName(lines.get(i));
         }
+        this.sentLines.put(player.getUniqueId(), List.copyOf(lines.subList(0, size)));
         for (String entry : new ArrayList<>(board.getEntries())) {
             if (entry.startsWith("line")) {
                 try {
@@ -321,6 +329,7 @@ public final class HudService implements Listener {
     }
 
     private void removeSidebar(Player player) {
+        this.sentLines.remove(player.getUniqueId());
         Scoreboard board = this.sidebars.remove(player.getUniqueId());
         if (board != null && player.getScoreboard() == board) {
             player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
@@ -330,6 +339,7 @@ public final class HudService implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         this.sidebars.remove(event.getPlayer().getUniqueId());
+        this.sentLines.remove(event.getPlayer().getUniqueId());
     }
 
     public void save(ConfigurationSection section) {

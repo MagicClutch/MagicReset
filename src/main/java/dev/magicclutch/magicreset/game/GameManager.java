@@ -657,7 +657,11 @@ public final class GameManager {
         }
         Settings.GoalSettings config = this.settings().goal();
         if (this.timers.scope() == TimerScope.GLOBAL) {
+            if (this.timers.global().state() == RunTimer.State.IDLE) {
+                this.timers.global().start(); // MANUAL trigger never started: finish at 0 instead of staying idle
+            }
             this.timers.global().finish();
+            this.timers.endRun();
             this.outcome = Outcome.COMPLETED;
             String time = this.formatPrecise(this.timers.global().millis(this.timers.mode()));
             TagResolver resolvers = TagResolver.resolver(Placeholder.unparsed("player", player.getName()), Placeholder.unparsed("time", time), this.goalPlaceholder());
@@ -690,6 +694,7 @@ public final class GameManager {
                 .allMatch(online -> this.timers.timer(online.getUniqueId()).state() == RunTimer.State.FINISHED);
             if (everyoneDone) {
                 this.outcome = Outcome.COMPLETED;
+                this.timers.endRun();
                 this.messages().send(Bukkit.getServer(), "goal.completed.all");
                 this.scheduleFollowUpReset(config.resetAfter());
             }

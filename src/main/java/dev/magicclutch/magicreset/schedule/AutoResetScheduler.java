@@ -39,7 +39,8 @@ public final class AutoResetScheduler {
     private boolean loop;
     /** Epoch millis of the next reset, 0 when off. */
     private long next;
-    private long lastAnnounced = -1;
+    /** Smallest warning already announced for the current schedule. */
+    private long lastAnnounced = Long.MAX_VALUE;
     private @Nullable BukkitTask task;
 
     public AutoResetScheduler(MagicReset plugin, GameManager game) {
@@ -64,7 +65,7 @@ public final class AutoResetScheduler {
         this.time = null;
         this.loop = repeat;
         this.next = System.currentTimeMillis() + delay.toMillis();
-        this.lastAnnounced = -1;
+        this.lastAnnounced = Long.MAX_VALUE;
         this.game.saveAsync();
     }
 
@@ -74,7 +75,7 @@ public final class AutoResetScheduler {
         this.interval = Duration.ZERO;
         this.loop = repeat;
         this.next = nextOccurrence(at);
-        this.lastAnnounced = -1;
+        this.lastAnnounced = Long.MAX_VALUE;
         this.game.saveAsync();
     }
 
@@ -97,10 +98,15 @@ public final class AutoResetScheduler {
         if (this.kind == Kind.OFF) {
             return;
         }
-        long remainingSeconds = Math.max(0L, (this.next - System.currentTimeMillis() + 999L) / 1000L);
+        long remainingSeconds = this.secondsRemaining();
         if (remainingSeconds > 0) {
-            if (remainingSeconds != this.lastAnnounced && this.plugin.settings().autoReset().warnings().contains((int) remainingSeconds)) {
-                this.lastAnnounced = remainingSeconds;
+            // the smallest warning threshold that has been reached and not announced yet; lag cannot skip one
+            long threshold = this.plugin.settings().autoReset().warnings().stream()
+                .mapToLong(Integer::longValue)
+                .filter(seconds -> seconds >= remainingSeconds && seconds < this.lastAnnounced)
+                .min().orElse(-1L);
+            if (threshold > 0) {
+                this.lastAnnounced = threshold;
                 this.plugin.messages().send(Bukkit.getServer(), "auto-reset.warning",
                     Placeholder.unparsed("time", TimeFormat.compact(remainingSeconds)));
             }
@@ -126,7 +132,7 @@ public final class AutoResetScheduler {
                 return;
             }
         }
-        this.lastAnnounced = -1;
+        this.lastAnnounced = Long.MAX_VALUE;
         if (this.game.phase() == GameManager.Phase.RESETTING) {
             this.game.saveAsync();
             return;
@@ -144,13 +150,13 @@ public final class AutoResetScheduler {
     }
 
     public long secondsRemaining() {
-        return this.kind == Kind.OFF ? 0L : Math.max(0L, (this.next - System.currentTimeMillis()) / 1000L);
+        return this.kind == Kind.OFF ? 0L : Math.max(0L, (this.next - System.currentTimeMillis() + 999L) / 1000L);
     }
 
     public String describe() {
         return switch (this.kind) {
             case OFF -> "off";
-            case INTERVAL -> "every " + TimeFormat.compact(this.interval.toSeconds());
+            case INTERVAL -> (this.loop ? "every " : "in ") + TimeFormat.compact(this.interval.toSeconds());
             case DAILY -> "at " + (this.time == null ? "?" : CLOCK.format(this.time));
         };
     }

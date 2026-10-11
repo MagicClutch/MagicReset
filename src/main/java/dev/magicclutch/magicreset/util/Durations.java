@@ -21,6 +21,14 @@ public final class Durations {
      * @return the parsed duration or {@code null} if the input is not a valid duration
      */
     public static Duration parse(String input) {
+        try {
+            return parseUnchecked(input);
+        } catch (ArithmeticException | NumberFormatException e) {
+            return null; // absurdly large values
+        }
+    }
+
+    private static Duration parseUnchecked(String input) {
         if (input == null) {
             return null;
         }

@@ -3,6 +3,7 @@ package dev.magicclutch.magicreset.goal;
 import dev.magicclutch.magicreset.config.Messages;
 import dev.magicclutch.magicreset.timer.TimerScope;
 import dev.magicclutch.magicreset.world.GameWorlds;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -73,6 +74,19 @@ public final class GoalService implements Listener {
         return this.goal.get();
     }
 
+    /** Carries progress over when the timer scope changes mid-run. */
+    public void migrateProgress(TimerScope to, Collection<? extends Player> participants) {
+        if (to == TimerScope.INDIVIDUAL) {
+            for (Player player : participants) {
+                this.playerProgress.merge(player.getUniqueId(), this.globalProgress, Math::max);
+            }
+        } else {
+            for (int value : this.playerProgress.values()) {
+                this.globalProgress = Math.max(this.globalProgress, value);
+            }
+        }
+    }
+
     public void resetProgress() {
         this.globalProgress = 0;
         this.playerProgress.clear();
@@ -127,12 +141,18 @@ public final class GoalService implements Listener {
             return;
         }
         Player killer = entity.getKiller();
+        if (killer == null && event.getDamageSource().getCausingEntity() instanceof Player causing) {
+            killer = causing;
+        }
         if (killer != null) {
             this.advance(killer, 1);
             return;
         }
-        // Kills without a direct player killer (bed or crystal explosions on the dragon, fall damage, ...):
-        // in global mode it counts once, in individual mode it counts for everyone in that world.
+        if (entity.getType() != EntityType.ENDER_DRAGON) {
+            return; // e.g. zombies burning in daylight do not count
+        }
+        // The dragon is often killed by beds or crystals without a credited killer: in global mode it counts
+        // once, in individual mode for everyone fighting it in that world.
         if (this.scope.get() == TimerScope.GLOBAL) {
             entity.getWorld().getPlayers().stream().filter(this.canProgress).findFirst().ifPresent(player -> this.advance(player, 1));
         } else {
@@ -165,6 +185,9 @@ public final class GoalService implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onRespawn(PlayerRespawnEvent event) {
+        if (event.getRespawnReason() != PlayerRespawnEvent.RespawnReason.DEATH) {
+            return; // leaving the end through the exit portal is a "respawn" too, but counts as portal travel
+        }
         this.respawnTick.put(event.getPlayer().getUniqueId(), Bukkit.getCurrentTick());
     }
 

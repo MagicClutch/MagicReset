@@ -237,7 +237,7 @@ public final class Settings {
             this.logger.warning("goal.target '" + rawTarget + "' is not a valid key, the goal is disabled");
             return Goal.NONE;
         }
-        return new Goal(type, target, config.getInt("goal.amount", 1));
+        return new Goal(type, target, Math.clamp(config.getInt("goal.amount", 1), 1, 100_000));
     }
 
     private WorldType worldType(String raw) {

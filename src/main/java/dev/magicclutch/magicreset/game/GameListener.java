@@ -5,6 +5,7 @@ import dev.magicclutch.magicreset.world.GameWorlds;
 import io.papermc.paper.event.player.AsyncPlayerSpawnLocationEvent;
 import java.util.function.IntSupplier;
 import org.bukkit.Bukkit;
+import org.bukkit.Input;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -16,6 +17,7 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInputEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
@@ -87,7 +89,16 @@ public final class GameListener implements Listener {
             }
             return;
         }
-        if (event.hasChangedPosition() && this.timers.isWaitingForInput(player) && this.game.isActiveRunner(player)) {
+    }
+
+    /** Real key presses only: falling or being knocked back must not start the timer. */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onInput(PlayerInputEvent event) {
+        Player player = event.getPlayer();
+        Input input = event.getInput();
+        boolean pressed = input.isForward() || input.isBackward() || input.isLeft() || input.isRight()
+            || input.isJump() || input.isSneak() || input.isSprint();
+        if (pressed && this.timers.isWaitingForInput(player) && this.game.isActiveRunner(player)) {
             this.timers.onInput(player);
         }
     }

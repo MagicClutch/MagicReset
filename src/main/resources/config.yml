@@ -116,7 +116,7 @@ deaths:
   # OFF = deaths are only counted
   # HARDCORE = the first death fails the run
   # SHARED_LIVES = all players share "shared-lives" lives
-  mode: OFF
+  mode: 'OFF'
   shared-lives: 3
   # Put everybody into spectator mode when the run failed.
   spectator-on-fail: true

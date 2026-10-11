@@ -219,9 +219,14 @@ public final class MagicResetCommand {
         Component clickable = Component.text(seed)
             .clickEvent(ClickEvent.copyToClipboard(seed))
             .hoverEvent(HoverEvent.showText(this.messages().get("seed.click-to-copy")));
-        String mode = this.settings().seedMode() == SeedMode.FIXED
-            ? "fixed (" + this.settings().fixedSeed() + ")"
-            : "random";
+        String mode;
+        if (this.settings().seedMode() != SeedMode.FIXED) {
+            mode = "random";
+        } else if (this.settings().fixedSeed().isBlank()) {
+            mode = "random, the fixed seed is empty";
+        } else {
+            mode = "fixed (" + this.settings().fixedSeed() + ")";
+        }
         this.messages().send(sender(ctx), "seed.current",
             Placeholder.component("seed", clickable),
             Placeholder.unparsed("mode", mode));
@@ -252,13 +257,14 @@ public final class MagicResetCommand {
                 return this.timerFeedback(ctx, "timer.reset");
             }))
             .then(Commands.literal("set")
-                .then(Commands.argument("time", StringArgumentType.word()).executes(ctx -> {
+                // greedy: "1:30:00" contains ':' which is not allowed in an unquoted word
+                .then(Commands.argument("time", StringArgumentType.greedyString()).executes(ctx -> {
                     Duration time = Durations.parse(StringArgumentType.getString(ctx, "time"));
                     if (time == null) {
                         this.messages().send(sender(ctx), "invalid-duration");
                         return 0;
                     }
-                    this.timers.setAll(time.toMillis());
+                    this.timers.setAll(time.toMillis(), this.participants());
                     this.game.saveAsync();
                     this.messages().send(sender(ctx), "timer.set", Placeholder.unparsed("time", this.game.formatPrecise(time.toMillis())));
                     return Command.SINGLE_SUCCESS;
@@ -316,6 +322,7 @@ public final class MagicResetCommand {
                     this.timers.global().copyFrom(longest);
                 }
             }
+            this.plugin.goals().migrateProgress(scope, this.participants());
         }
         this.plugin.setConfigValue("timer.scope", scope.name());
         this.game.saveAsync();
@@ -469,10 +476,10 @@ public final class MagicResetCommand {
                 return Command.SINGLE_SUCCESS;
             }))
             .then(Commands.literal("in")
-                .then(Commands.argument("duration", StringArgumentType.word())
-                    .suggests(this.suggest(() -> Stream.of("30m", "1h", "2h30m", "1d")))
-                    .executes(ctx -> this.autoResetIn(ctx, false))
-                    .then(Commands.literal("loop").executes(ctx -> this.autoResetIn(ctx, true)))))
+                // greedy like "at", an optional trailing "loop" is parsed by hand
+                .then(Commands.argument("duration", StringArgumentType.greedyString())
+                    .suggests(this.suggest(() -> Stream.of("30m", "1h loop", "2h30m", "1d loop")))
+                    .executes(this::autoResetIn)))
             .then(Commands.literal("at")
                 // greedy because "18:00" is not a valid unquoted word; an optional trailing "loop" is parsed by hand
                 .then(Commands.argument("time", StringArgumentType.greedyString())
@@ -480,8 +487,10 @@ public final class MagicResetCommand {
                     .executes(this::autoResetAt)));
     }
 
-    private int autoResetIn(CommandContext<CommandSourceStack> ctx, boolean loop) {
-        Duration duration = Durations.parse(StringArgumentType.getString(ctx, "duration"));
+    private int autoResetIn(CommandContext<CommandSourceStack> ctx) {
+        String[] parts = StringArgumentType.getString(ctx, "duration").trim().split("\\s+");
+        boolean loop = parts.length == 2 && parts[1].equalsIgnoreCase("loop");
+        Duration duration = parts.length > 2 || (parts.length == 2 && !loop) ? null : Durations.parse(parts[0]);
         if (duration == null || duration.toSeconds() < 1) {
             this.messages().send(sender(ctx), "invalid-duration");
             return 0;
@@ -554,7 +563,8 @@ public final class MagicResetCommand {
             Placeholder.unparsed("run", Integer.toString(this.game.run())),
             Placeholder.unparsed("phase", this.game.phase().name().toLowerCase(Locale.ROOT)),
             Placeholder.unparsed("outcome", this.game.outcome().name().toLowerCase(Locale.ROOT)),
-            Placeholder.unparsed("seed", Long.toString(this.game.seed())),
+            // the seed is only shown to players who may see it via /mr seed
+            Placeholder.unparsed("seed", sender.hasPermission(PERM + "seed") ? Long.toString(this.game.seed()) : "hidden"),
             Placeholder.unparsed("seed-mode", settings.seedMode().name().toLowerCase(Locale.ROOT)),
             Placeholder.unparsed("time", this.game.formatPrecise(timer.millis(settings.timer().mode()))),
             Placeholder.unparsed("timer-mode", settings.timer().mode().name()),
