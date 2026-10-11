@@ -33,14 +33,17 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.logging.Level;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickCallback;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -83,6 +86,10 @@ public final class DialogMenu {
 
     /** Opens the admin menu, or the info view for players without any admin permission. */
     public void open(Player player) {
+        this.safely(player, "main menu", () -> this.openMain(player));
+    }
+
+    private void openMain(Player player) {
         List<ActionButton> buttons = new ArrayList<>();
         this.section(buttons, player, PERM + "reset", "reset", this::openReset);
         this.section(buttons, player, PERM + "timer", "timer", this::openTimer);
@@ -96,10 +103,18 @@ public final class DialogMenu {
         }
         buttons.add(this.button(this.text("button.leaderboard"), null, (response, audience) -> this.openInfo(player)));
         DialogBase base = DialogBase.builder(this.text("title.main"))
-            .body(List.of(DialogBody.plainMessage(this.statusText(player), WIDE + 100)))
+            .body(List.of(this.icon(Material.CLOCK, this.statusText(player))))
             .canCloseWithEscape(true)
             .build();
         this.show(player, base, DialogType.multiAction(buttons).columns(2).exitAction(this.closeButton()).build());
+    }
+
+    /** An item next to a text, used as the header of every screen. */
+    private DialogBody icon(Material material, Component description) {
+        return DialogBody.item(new ItemStack(material))
+            .description(DialogBody.plainMessage(description, WIDE + 60))
+            .showTooltip(false)
+            .build();
     }
 
     private void section(List<ActionButton> buttons, Player player, String permission, String key, BiConsumer<Player, Boolean> opener) {
@@ -123,13 +138,17 @@ public final class DialogMenu {
 
     /** Read-only view: status and the leaderboard of the current goal. */
     public void openInfo(Player player) {
+        this.safely(player, "info", () -> this.openInfoUnsafe(player));
+    }
+
+    private void openInfoUnsafe(Player player) {
         List<DialogBody> body = new ArrayList<>();
-        body.add(DialogBody.plainMessage(this.statusText(player), WIDE + 100));
+        body.add(this.icon(Material.CLOCK, this.statusText(player)));
         Component board = Component.empty();
         for (Component line : this.hud.leaderboardLines()) {
             board = board.append(line).append(Component.newline());
         }
-        body.add(DialogBody.plainMessage(board, WIDE + 100));
+        body.add(this.icon(Material.GOLD_INGOT, board));
         DialogBase base = DialogBase.builder(this.text("title.info")).body(body).canCloseWithEscape(true).build();
         this.show(player, base, DialogType.notice(this.closeButton()));
     }
@@ -141,7 +160,7 @@ public final class DialogMenu {
     private void openReset(Player player, boolean fromMain) {
         Settings.Reset reset = this.settings().reset();
         List<DialogInput> inputs = List.of(
-            DialogInput.text("seed", this.text("input.seed")).initial("").maxLength(64).width(WIDE).build(),
+            this.textInput("seed", "input.seed", "", 64),
             this.number("countdown", "input.countdown", 0, 60, 1, reset.countdown()),
             this.number("limbo", "input.limbo-countdown", 0, 60, 1, reset.limboCountdown())
         );
@@ -163,8 +182,8 @@ public final class DialogMenu {
             this.options("mode", "input.timer-mode", TimerMode.values(), timer.mode()),
             this.options("scope", "input.timer-scope", TimerScope.values(), timer.scope()),
             this.options("start", "input.timer-start", StartTrigger.values(), timer.start()),
-            this.bool("stop-empty", "input.stop-when-empty", timer.stopWhenEmpty()),
-            DialogInput.text("format", this.text("input.timer-format")).initial(timer.format()).maxLength(32).width(WIDE).build(),
+            this.bool("stop_empty", "input.stop-when-empty", timer.stopWhenEmpty()),
+            this.textInput("format", "input.timer-format", timer.format(), 32),
             this.number("decimals", "input.decimals", 0, 3, 1, timer.decimals())
         );
         this.form(player, "title.timer", this.text("body.timer"), inputs, this.text("button.save"), PERM + "timer", response -> {
@@ -173,7 +192,7 @@ public final class DialogMenu {
             values.put("timer.mode", option(response, "mode", timer.mode().name()));
             values.put("timer.scope", option(response, "scope", timer.scope().name()));
             values.put("timer.start", option(response, "start", timer.start().name()));
-            values.put("timer.stop-when-empty", boolOf(response, "stop-empty", timer.stopWhenEmpty()));
+            values.put("timer.stop-when-empty", boolOf(response, "stop_empty", timer.stopWhenEmpty()));
             values.put("timer.decimals", intOf(response, "decimals", timer.decimals()));
             if (format != null && (format.equalsIgnoreCase("auto") || TimeFormat.isValidPattern(format.trim()))) {
                 values.put("timer.format", format.trim());
@@ -190,11 +209,10 @@ public final class DialogMenu {
         Settings.GoalSettings config = this.settings().goal();
         List<DialogInput> inputs = List.of(
             this.options("type", "input.goal-type", GoalType.values(), goal.type()),
-            DialogInput.text("target", this.text("input.goal-target"))
-                .initial(goal.target() == null ? "" : goal.target().asString()).maxLength(96).width(WIDE).build(),
+            this.textInput("target", "input.goal-target", goal.target() == null ? "" : goal.target().asString(), 96),
             this.number("amount", "input.goal-amount", 1, 64, 1, goal.amount()),
             this.bool("spectator", "input.spectator-on-finish", config.spectatorOnFinish()),
-            this.number("reset-after", "input.reset-after", -1, 600, 1, config.resetAfter())
+            this.number("reset_after", "input.reset-after", -1, 600, 1, config.resetAfter())
         );
         this.form(player, "title.goal", this.text("body.goal", this.game.goalPlaceholder()), inputs, this.text("button.save"), PERM + "goal", response -> {
             GoalType type = GoalType.valueOf(option(response, "type", goal.type().name()));
@@ -214,7 +232,7 @@ public final class DialogMenu {
             values.put("goal.target", target == null ? "" : target.asString());
             values.put("goal.amount", intOf(response, "amount", goal.amount()));
             values.put("goal.spectator-on-finish", boolOf(response, "spectator", config.spectatorOnFinish()));
-            values.put("goal.reset-after", intOf(response, "reset-after", config.resetAfter()));
+            values.put("goal.reset-after", intOf(response, "reset_after", config.resetAfter()));
             this.plugin.setConfigValues(values);
             this.plugin.goals().resetProgress();
             this.messages().send(player, "goal.changed", this.game.goalPlaceholder());
@@ -227,27 +245,27 @@ public final class DialogMenu {
         List<DialogInput> inputs = List.of(
             this.bool("nether", "input.nether", settings.worlds().nether()),
             this.bool("end", "input.end", settings.worlds().end()),
-            this.bool("locator-bar", "input.locator-bar", settings.worlds().locatorBar()),
+            this.bool("locator_bar", "input.locator-bar", settings.worlds().locatorBar()),
             this.bool("preload", "input.preload", settings.reset().preload()),
             this.bool("backups", "input.backups", settings.backups().enabled()),
             this.number("keep", "input.backups-keep", 0, 50, 1, settings.backups().keep()),
-            this.options("seed-mode", "input.seed-mode", SeedMode.values(), settings.seedMode()),
-            DialogInput.text("fixed-seed", this.text("input.fixed-seed")).initial(settings.fixedSeed()).maxLength(64).width(WIDE).build(),
-            this.bool("show-seed", "input.show-seed", settings.showSeed())
+            this.options("seed_mode", "input.seed-mode", SeedMode.values(), settings.seedMode()),
+            this.textInput("fixed_seed", "input.fixed-seed", settings.fixedSeed(), 64),
+            this.bool("show_seed", "input.show-seed", settings.showSeed())
         );
         this.form(player, "title.worlds", this.text("body.worlds", Placeholder.unparsed("worlds", this.game.resetWorldList())), inputs,
             this.text("button.save"), PERM + "worlds", response -> {
                 Map<String, Object> values = new LinkedHashMap<>();
                 values.put("worlds.nether", boolOf(response, "nether", settings.worlds().nether()));
                 values.put("worlds.end", boolOf(response, "end", settings.worlds().end()));
-                values.put("worlds.locator-bar", boolOf(response, "locator-bar", settings.worlds().locatorBar()));
+                values.put("worlds.locator-bar", boolOf(response, "locator_bar", settings.worlds().locatorBar()));
                 values.put("reset.preload", boolOf(response, "preload", settings.reset().preload()));
                 values.put("backups.enabled", boolOf(response, "backups", settings.backups().enabled()));
                 values.put("backups.keep", intOf(response, "keep", settings.backups().keep()));
-                values.put("seed.mode", option(response, "seed-mode", settings.seedMode().name()));
-                String fixed = response.getText("fixed-seed");
+                values.put("seed.mode", option(response, "seed_mode", settings.seedMode().name()));
+                String fixed = response.getText("fixed_seed");
                 values.put("seed.fixed", fixed == null ? settings.fixedSeed() : fixed.trim());
-                values.put("seed.show", boolOf(response, "show-seed", settings.showSeed()));
+                values.put("seed.show", boolOf(response, "show_seed", settings.showSeed()));
                 this.plugin.setConfigValues(values);
                 this.plugin.worlds().applyLocatorBar();
                 return true;
@@ -260,30 +278,33 @@ public final class DialogMenu {
             this.options("mode", "input.death-mode", DeathMode.values(), deaths.mode()),
             this.number("lives", "input.shared-lives", 1, 20, 1, deaths.sharedLives()),
             this.bool("spectator", "input.spectator-on-fail", deaths.spectatorOnFail()),
-            this.number("reset-after", "input.reset-after", -1, 600, 1, deaths.resetAfter())
+            this.number("reset_after", "input.reset-after", -1, 600, 1, deaths.resetAfter())
         );
         this.form(player, "title.deaths", this.text("body.deaths"), inputs, this.text("button.save"), PERM + "deaths", response -> {
             Map<String, Object> values = new LinkedHashMap<>();
             values.put("deaths.mode", option(response, "mode", deaths.mode().name()));
             values.put("deaths.shared-lives", intOf(response, "lives", deaths.sharedLives()));
             values.put("deaths.spectator-on-fail", boolOf(response, "spectator", deaths.spectatorOnFail()));
-            values.put("deaths.reset-after", intOf(response, "reset-after", deaths.resetAfter()));
+            values.put("deaths.reset-after", intOf(response, "reset_after", deaths.resetAfter()));
             this.plugin.setConfigValues(values);
             return true;
         });
     }
 
     public void openManhunt(Player player, boolean fromMain) {
+        this.safely(player, "manhunt", () -> this.openManhuntUnsafe(player));
+    }
+
+    private void openManhuntUnsafe(Player player) {
         Settings.Manhunt config = this.settings().manhunt();
         ManhuntService manhunt = this.plugin.manhunt();
         List<DialogInput> inputs = List.of(
             this.bool("enabled", "input.manhunt-enabled", config.enabled()),
-            DialogInput.text("targets", this.text("input.manhunt-targets"))
-                .initial(manhunt.targets().isEmpty() ? "" : manhunt.targetNames()).maxLength(256).width(WIDE).build(),
+            this.textInput("targets", "input.manhunt-targets", manhunt.targets().isEmpty() ? "" : manhunt.targetNames(), 256),
             this.number("lives", "input.manhunt-lives", 1, 10, 1, config.targetLives()),
-            this.number("head-start", "input.manhunt-head-start", 0, 300, 5, config.headStart()),
+            this.number("head_start", "input.manhunt-head-start", 0, 300, 5, config.headStart()),
             this.bool("compass", "input.manhunt-compass", config.hunterCompass()),
-            this.number("reset-after", "input.reset-after", -1, 600, 1, config.resetAfter())
+            this.number("reset_after", "input.reset-after", -1, 600, 1, config.resetAfter())
         );
         this.form(player, "title.manhunt", this.text("body.manhunt", this.game.goalPlaceholder()), inputs, this.text("button.save"),
             "magicreset.manhunt", response -> {
@@ -310,9 +331,9 @@ public final class DialogMenu {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("manhunt.enabled", boolOf(response, "enabled", config.enabled()));
         values.put("manhunt.target-lives", intOf(response, "lives", config.targetLives()));
-        values.put("manhunt.head-start", intOf(response, "head-start", config.headStart()));
+        values.put("manhunt.head-start", intOf(response, "head_start", config.headStart()));
         values.put("manhunt.hunter-compass", boolOf(response, "compass", config.hunterCompass()));
-        values.put("manhunt.reset-after", intOf(response, "reset-after", config.resetAfter()));
+        values.put("manhunt.reset-after", intOf(response, "reset_after", config.resetAfter()));
         this.plugin.setConfigValues(values);
         ManhuntService manhunt = this.plugin.manhunt();
         String names = response.getText("targets");
@@ -344,6 +365,18 @@ public final class DialogMenu {
         boolean apply(DialogResponseView response);
     }
 
+    private static Material iconFor(String titleKey) {
+        return switch (titleKey) {
+            case "title.reset" -> Material.TNT;
+            case "title.timer" -> Material.CLOCK;
+            case "title.goal" -> Material.DRAGON_EGG;
+            case "title.worlds" -> Material.GRASS_BLOCK;
+            case "title.deaths" -> Material.TOTEM_OF_UNDYING;
+            case "title.manhunt" -> Material.COMPASS;
+            default -> Material.BOOK;
+        };
+    }
+
     private void form(Player player, String titleKey, Component body, List<DialogInput> inputs, Component submitLabel,
                       String permission, Submit submit, ActionButton... extra) {
         List<ActionButton> buttons = new ArrayList<>();
@@ -359,7 +392,7 @@ public final class DialogMenu {
         }));
         buttons.addAll(List.of(extra));
         DialogBase base = DialogBase.builder(this.text(titleKey))
-            .body(List.of(DialogBody.plainMessage(body, WIDE + 100)))
+            .body(List.of(this.icon(iconFor(titleKey), body)))
             .inputs(inputs)
             .canCloseWithEscape(true)
             .build();
@@ -372,16 +405,31 @@ public final class DialogMenu {
         player.showDialog(dialog);
     }
 
+    /** Runs a menu action; a bug never kicks the player or breaks the command, it is reported instead. */
+    private void safely(Player player, String what, Runnable action) {
+        try {
+            action.run();
+        } catch (RuntimeException e) {
+            this.plugin.getLogger().log(Level.SEVERE, "Menu error (" + what + ")", e);
+            player.closeDialog();
+            this.messages().send(player, "menu.error");
+        }
+    }
+
     private ActionButton button(Component label, @Nullable Component tooltip, BiConsumer<DialogResponseView, Audience> action) {
         return ActionButton.builder(label)
             .tooltip(tooltip)
             .width(150)
             .action(DialogAction.customClick((response, audience) -> {
+                if (!(audience instanceof Player player)) {
+                    return;
+                }
                 // dialog callbacks may arrive off the main thread; everything here touches the game
+                Runnable run = () -> this.safely(player, "button", () -> action.accept(response, audience));
                 if (Bukkit.isPrimaryThread()) {
-                    action.accept(response, audience);
+                    run.run();
                 } else {
-                    Bukkit.getScheduler().runTask(this.plugin, () -> action.accept(response, audience));
+                    Bukkit.getScheduler().runTask(this.plugin, run);
                 }
             }, ONCE))
             .build();
@@ -391,14 +439,26 @@ public final class DialogMenu {
         return ActionButton.builder(this.text("button.close")).width(150).build();
     }
 
+    private DialogInput textInput(String key, String labelKey, String initial, int maxLength) {
+        String value = initial == null ? "" : initial;
+        return DialogInput.text(key, this.text(labelKey))
+            .initial(value)
+            .maxLength(Math.max(maxLength, value.length()))
+            .width(WIDE)
+            .build();
+    }
+
     private DialogInput bool(String key, String labelKey, boolean initial) {
         return DialogInput.bool(key, this.text(labelKey)).initial(initial).build();
     }
 
     private DialogInput number(String key, String labelKey, int start, int end, int step, int initial) {
-        return DialogInput.numberRange(key, this.text(labelKey), start, end)
+        // a value from the config outside the usual range widens the slider instead of being cut off on save
+        int low = Math.min(start, initial);
+        int high = Math.max(end, initial);
+        return DialogInput.numberRange(key, this.text(labelKey), low, high)
             .step((float) step)
-            .initial((float) Math.clamp(initial, start, end))
+            .initial((float) initial)
             .width(WIDE)
             .build();
     }

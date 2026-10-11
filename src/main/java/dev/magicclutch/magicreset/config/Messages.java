@@ -33,6 +33,7 @@ public final class Messages {
         try (InputStream stream = plugin.getResource(FILE_NAME)) {
             if (stream != null) {
                 this.messages.setDefaults(YamlConfiguration.loadConfiguration(new InputStreamReader(stream, StandardCharsets.UTF_8)));
+                this.addMissingKeys(file, plugin);
             }
         } catch (Exception e) {
             plugin.getLogger().warning("Could not read bundled " + FILE_NAME + ": " + e.getMessage());
@@ -40,8 +41,35 @@ public final class Messages {
         this.prefix = Placeholder.parsed("prefix", this.messages.getString("prefix", ""));
     }
 
+    /**
+     * Messages added in a newer version are written into the server's messages.yml, so they can be edited
+     * there as well. Existing texts are never changed.
+     */
+    private void addMissingKeys(File file, JavaPlugin plugin) {
+        var defaults = this.messages.getDefaults();
+        if (defaults == null) {
+            return;
+        }
+        boolean changed = false;
+        for (String key : defaults.getKeys(true)) {
+            if (!defaults.isConfigurationSection(key) && !this.messages.isSet(key)) {
+                this.messages.set(key, defaults.get(key));
+                changed = true;
+            }
+        }
+        if (changed) {
+            try {
+                this.messages.save(file);
+            } catch (java.io.IOException e) {
+                plugin.getLogger().warning("Could not add new messages to " + FILE_NAME + ": " + e.getMessage());
+            }
+        }
+    }
+
     public String raw(String key) {
-        return this.messages.getString(key, key);
+        // getString(key) falls back to the bundled defaults; getString(key, def) would skip them
+        String value = this.messages.getString(key);
+        return value != null ? value : key;
     }
 
     public Component get(String key, TagResolver... resolvers) {
