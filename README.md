@@ -36,8 +36,8 @@ a sidebar and a player radar.
 
 ## Installation
 
-1. Download `MagicReset-<version>.jar` from the [releases](../../releases) or from the latest
-   [build run](../../actions) (artifact `MagicReset`).
+1. Download `MagicReset-<version>.jar` from the [releases](../../releases) ("Latest build" is always the newest
+   version of `main`).
 2. Put it into `plugins/` and start the server. The first world is generated automatically.
 3. Optional: disable the vanilla nether and end, they are not used by the game
    (`allow-nether=false` in `server.properties`, `settings.allow-end: false` in `bukkit.yml`).
@@ -134,6 +134,8 @@ Settings changed by commands are written back into `config.yml` (comments are ke
 ./gradlew build
 ```
 
-The jar is written to `build/libs/`. Every push is built by GitHub Actions (`.github/workflows/build.yml`)
-and the jar is attached to the run as the artifact `MagicReset`. Pushing a tag like `v1.0.0` also publishes a
-GitHub release with the jar.
+The jar is written to `build/libs/`. Every push and pull request is built by GitHub Actions
+(`.github/workflows/build.yml`) and the jar is attached to the run as the artifact `MagicReset`.
+
+- Every push to `main` replaces the pre-release **Latest build** (tag `latest`) with the new jar.
+- Pushing a tag like `v1.0.0` publishes a numbered release.
