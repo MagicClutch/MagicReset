@@ -185,4 +185,5 @@ The jar is written to `build/libs/`. Every push and pull request is built by Git
 (`.github/workflows/build.yml`) and the jar is attached to the run as the artifact `MagicReset`.
 
 - Every push to `main` replaces the pre-release **Latest build** (tag `latest`) with the new jar.
-- Pushing a tag like `v1.0.0` publishes a numbered release.
+- A numbered release is published by pushing a tag like `v1.0.0`, or in GitHub under *Actions → Build →
+  Run workflow* with a version number.
