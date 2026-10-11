@@ -55,7 +55,8 @@ final class ManhuntCommand {
     com.mojang.brigadier.tree.LiteralCommandNode<CommandSourceStack> build() {
         LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal("manhunt")
             .requires(source -> source.getSender().hasPermission("magicreset.command.use"))
-            .executes(this::status)
+            .executes(this::menuOrStatus)
+            .then(Commands.literal("menu").executes(this::menuOrStatus))
             .then(Commands.literal("help").executes(this::help))
             .then(Commands.literal("status").executes(this::status))
             .then(Commands.literal("on").requires(admin()).executes(ctx -> this.setEnabled(ctx, true)))
@@ -145,6 +146,15 @@ final class ManhuntCommand {
         this.messages().send(sender(ctx), "manhunt.setting-changed",
             Placeholder.unparsed("setting", path.substring("manhunt.".length())), Placeholder.unparsed("value", String.valueOf(value)));
         return Command.SINGLE_SUCCESS;
+    }
+
+    /** Admins get the manhunt dialog, everybody else the status. */
+    private int menuOrStatus(CommandContext<CommandSourceStack> ctx) {
+        if (sender(ctx) instanceof Player player && player.hasPermission(PERM)) {
+            this.plugin.menu().openManhunt(player, false);
+            return Command.SINGLE_SUCCESS;
+        }
+        return this.status(ctx);
     }
 
     private int status(CommandContext<CommandSourceStack> ctx) {

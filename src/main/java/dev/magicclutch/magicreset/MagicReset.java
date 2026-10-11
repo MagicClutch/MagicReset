@@ -8,6 +8,7 @@ import dev.magicclutch.magicreset.game.GameManager;
 import dev.magicclutch.magicreset.goal.GoalService;
 import dev.magicclutch.magicreset.hud.HudService;
 import dev.magicclutch.magicreset.manhunt.ManhuntService;
+import dev.magicclutch.magicreset.menu.DialogMenu;
 import dev.magicclutch.magicreset.schedule.AutoResetScheduler;
 import dev.magicclutch.magicreset.stats.Leaderboard;
 import dev.magicclutch.magicreset.timer.TimerService;
@@ -34,6 +35,7 @@ public final class MagicReset extends JavaPlugin {
     private AutoResetScheduler autoReset;
     private Leaderboard leaderboard;
     private ManhuntService manhunt;
+    private DialogMenu menu;
     private boolean started;
 
     @Override
@@ -77,6 +79,7 @@ public final class MagicReset extends JavaPlugin {
         plugins.registerEvents(this.hud, this);
         plugins.registerEvents(this.manhunt, this);
 
+        this.menu = new DialogMenu(this, this.game, this.timers, this.hud);
         MagicResetCommand command = new MagicResetCommand(this, this.game, this.timers, this.hud, this.autoReset);
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> command.register(event.registrar()));
 
@@ -178,6 +181,10 @@ public final class MagicReset extends JavaPlugin {
 
     public GoalService goals() {
         return this.goals;
+    }
+
+    public DialogMenu menu() {
+        return this.menu;
     }
 
     public ManhuntService manhunt() {

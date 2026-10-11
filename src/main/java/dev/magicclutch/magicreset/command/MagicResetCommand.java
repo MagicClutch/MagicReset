@@ -89,7 +89,8 @@ public final class MagicResetCommand {
     public void register(Commands registrar) {
         LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal("magicreset")
             .requires(source -> source.getSender().hasPermission(PERM + "use"))
-            .executes(this::help)
+            .executes(this::menuOrHelp)
+            .then(Commands.literal("menu").executes(this::menuOrHelp))
             .then(Commands.literal("help").executes(this::help))
             .then(this.resetNode("reset"))
             .then(Commands.literal("cancel").requires(permission("reset")).executes(this::cancel))
@@ -715,6 +716,15 @@ public final class MagicResetCommand {
             sender.sendMessage(line);
         }
         return Command.SINGLE_SUCCESS;
+    }
+
+    /** Players get the dialog menu, the console the command list. */
+    private int menuOrHelp(CommandContext<CommandSourceStack> ctx) {
+        if (sender(ctx) instanceof Player player) {
+            this.plugin.menu().open(player);
+            return Command.SINGLE_SUCCESS;
+        }
+        return this.help(ctx);
     }
 
     private int help(CommandContext<CommandSourceStack> ctx) {

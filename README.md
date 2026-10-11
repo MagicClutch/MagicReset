@@ -94,6 +94,14 @@ world/
 Nether portals and end portals of the game worlds are linked to each other (coordinate scaling, portal
 search/creation and the obsidian platform work like in vanilla).
 
+## Menu
+
+`/magicreset` (or `/mr`) without arguments opens an in-game menu built with the server-side dialog screens
+(Minecraft 1.21.6+, no client mod needed). Admins can change reset, timer, goal, worlds/seed/backups, death rules
+and manhunt settings there; every section needs the same permission as the matching command. Players without
+admin permissions see an info view with the run status and the leaderboard. `/manhunt` (`/mm`) opens the
+manhunt section directly.
+
 ## Commands
 
 Main command `/magicreset`, alias `/mr`. `/reset` is registered as a shortcut for `/magicreset reset`
