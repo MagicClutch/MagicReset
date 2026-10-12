@@ -26,14 +26,13 @@ a sidebar and a locator bar switch.
 - **Auto reset** – after a duration (`/mr autoreset in 2h loop`) or at a time of day (`/mr autoreset at 18:00 loop`)
   with warnings.
 - **Backups** – before a reset deletes a world, its files are moved to `plugins/MagicReset/backups/<date>_run-<n>/`
-  (one folder per world plus `info.yml` with run and seed). The last 5 are kept (`backups.keep`), switch with
-  `/mr backup on|off`.
+  (one folder per world plus `info.yml` with run and seed). The last 5 are kept, switch with `/mr backup on|off`.
 - **Hidden seed** – `seed.show: false` (or `/mr seed show off`) hides the seed from players; admins still see it.
 - **Leaderboard** – the fastest times per goal and timer mode with name and date, shown as the sidebar in the limbo
   (`/mr leaderboard`). Stored in `plugins/MagicReset/leaderboard.yml`.
 - **Sidebar** with run number, time, goal progress, deaths and lives (toggle per player with `/mr scoreboard`).
-- **Preloaded next world** (optional, off by default) – with `reset.preload: true` the next overworld is generated in
-  the background, so a reset moves everybody straight into it without the limbo. Changed seed or world settings regenerate it automatically.
+- **Preloaded next world** (optional, off by default) – add `reset.preload: true` to the config and the next
+  overworld is generated in the background, so a reset moves everybody straight into it without the limbo.
 - **Locator bar** – `worlds.locator-bar` / `/mr locatorbar on|off` switches the vanilla locator bar in the game worlds.
 - All texts are in English and fully editable in `messages.yml` (MiniMessage).
 
@@ -54,15 +53,14 @@ a sidebar and a locator bar switch.
 
 ## Modes
 
-The **Mode** switch in the menu changes between three modes with one click:
+**⚑ Mode & Goal** in the menu chooses the mode with one click:
 
-- **Speedrun** – timer on and a goal to reach.
+- **Speedrun** – timer on, everybody races for the goal.
 - **Free play** – no timer, no goal, no death rules: just play and reset the worlds whenever you like.
-- **Manhunt** – targets run, hunters chase them (see below).
+- **Manhunt** – the targets have to reach the goal, the hunters try to kill them (see above).
 
-The timer can also be switched off on its own (`timer.enabled`), and the sidebar for everybody (`scoreboard.enabled`).
-A reset can delete only some worlds: without the overworld the run goes on and only the nether/end are regenerated.
-Goals also include finding a biome or a structure first.
+The goal is the same in every mode. A reset can delete only some worlds: without the overworld the run goes on and
+only the nether/end are regenerated.
 
 ## Requirements
 
@@ -107,22 +105,30 @@ search/creation and the obsidian platform work like in vanilla).
 
 ## Menu
 
-`/magicreset` (or `/mr`) without arguments opens an in-game menu built with the server-side dialog screens
-(Minecraft 1.21.6+, no client mod needed). Everything is on one page:
+`/magicreset` (or `/mr`) without arguments opens the menu (server-side dialog screens, no client mod needed).
+Every setting is on exactly one screen:
 
-- **Buttons at the top** – reset now, goal, start/pause the timer, manhunt, and one button per topic (timer,
-  death rules, seed, worlds, auto reset, backups, players, limbo, reset, display), leaderboard and reload.
-- **Switches below** – mode (Speedrun / Free play / Manhunt), timer on/off, clock (real / in-game time), when
-  the timer starts, sidebar, locator bar, show seed and backups. The label shows the current value, a click
-  changes it right away.
+| Button | What is there |
+| --- | --- |
+| ⟳ Reset | Reset now, seed (empty = random), which worlds, countdowns, show seed, backups |
+| ⚑ Mode & Goal | Speedrun / Free play / Manhunt, the goal (with search) and the manhunt settings |
+| ⌚ Timer | Start / pause / reset, on/off, real or in-game time, when it starts, format |
+| ☠ Death settings | Hardcore / shared lives, new run after a failed one, stop the timer while dead |
+| ☀ Worlds | Nether/end, world type, difficulty, structures, world border, game rules |
+| ☺ Players on reset | What is cleared when a new run starts |
+| Sidebar / Locator bar | On/off with one click |
+| ★ Leaderboard | Best times |
 
-Every button needs the same permission as the matching command. Players without admin permissions see an info
-view with the run status and the leaderboard.
+Every button needs the same permission as the matching command. Players without admin permissions see the run
+status and the leaderboard. `/manhunt` (`/mm`) opens the manhunt settings directly.
 
-Every setting of `config.yml` can be changed in the menu: switches, sliders and choices, and text fields that
-name an example of what to type. The goal is chosen with buttons; mobs, blocks, items and advancements are
-picked from a search (with popular choices before typing anything), dimensions with one click. `/manhunt` (`/mm`) opens the
-manhunt section directly.
+## Configuration
+
+`config.yml` only contains the settings you actually need, and all of them are in the menu as well. A config
+from an older version is converted automatically on start: your values are kept and the old file is saved as
+`config-old.yml`. A few rarely needed settings are not in the file but still work when added by hand, for
+example `reset.preload: true` (generate the next overworld in the background), `backups.keep: 5`,
+`timer.scope: INDIVIDUAL` or `limbo.platform-block: GLASS`.
 
 ## Commands
 

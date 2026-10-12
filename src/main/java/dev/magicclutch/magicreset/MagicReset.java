@@ -1,6 +1,7 @@
 package dev.magicclutch.magicreset;
 
 import dev.magicclutch.magicreset.command.MagicResetCommand;
+import dev.magicclutch.magicreset.config.ConfigUpdater;
 import dev.magicclutch.magicreset.config.Messages;
 import dev.magicclutch.magicreset.config.Settings;
 import dev.magicclutch.magicreset.game.GameListener;
@@ -40,6 +41,7 @@ public final class MagicReset extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        ConfigUpdater.update(this);
         this.saveDefaultConfig();
         this.loadSettings();
 

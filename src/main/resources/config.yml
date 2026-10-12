@@ -1,83 +1,13 @@
 # ======================================================================================
-#  MagicReset - configuration
-#  Most settings can also be changed in-game with /magicreset; those commands write back
-#  into this file. Use /magicreset reload after editing it by hand.
+#  MagicReset
+#  Everything here can also be changed in-game: /mr opens the menu.
+#  After editing this file by hand: /mr reload
 # ======================================================================================
 
-worlds:
-  # The game worlds are stored inside the main level folder (level-name in server.properties):
-  #   <level-name>/dimensions/<namespace>/overworld
-  #   <level-name>/dimensions/<namespace>/the_nether
-  #   <level-name>/dimensions/<namespace>/the_end
-  #   <level-name>/dimensions/<namespace>/limbo        (never reset)
-  # A reset deletes only the three game folders (a paper-world.yml inside them is kept).
-  # Changing the namespace requires a restart and starts with fresh worlds.
-  namespace: magicreset
-  # Which dimensions are part of the game and deleted on every reset (also /magicreset worlds).
-  nether: true
-  end: true
-  # NORMAL, FLAT, LARGE_BIOMES or AMPLIFIED
-  type: NORMAL
-  generate-structures: true
-  bonus-chest: false
-  # Show hardcore hearts in the game worlds (purely visual, see "deaths" for the rules).
-  hardcore-hearts: false
-  # The vanilla locator bar (shows other players above the hotbar) in the game worlds.
-  # Also /magicreset locatorbar on|off.
-  locator-bar: true
-  # PEACEFUL, EASY, NORMAL or HARD
-  difficulty: NORMAL
-  # World border diameter in blocks, 0 keeps the vanilla border.
-  world-border: 0
-  # Game rules applied to every new game world, e.g.
-  #   minecraft:keep_inventory: false
-  #   minecraft:players_sleeping_percentage: 50
-  game-rules: {}
-
-seed:
-  # RANDOM: a new random seed every reset. FIXED: always use the seed below.
-  # "/magicreset reset <seed>" overrides this for a single reset.
-  mode: RANDOM
-  # Numbers are used as-is, text is converted like in vanilla.
-  fixed: ''
-  # Show the seed to players (reset message, /magicreset status, sidebar). Admins with
-  # magicreset.command.seed always see it via /magicreset seed. Also /magicreset seed show on|off.
-  show: true
-
-backups:
-  # Before a reset deletes a world, move its files into a backup folder instead.
-  # Also /magicreset backup on|off.
-  enabled: true
-  # Relative paths are inside plugins/MagicReset/. One sub folder per reset:
-  #   backups/2026-10-11_18-30-05_run-3/minecraft_the_end/...
-  folder: backups
-  # How many backups to keep, older ones are deleted. 0 = keep all (watch your disk space!).
-  keep: 5
-
-spawn:
-  # Search radius (blocks) around the world spawn for a dry, solid spawn point.
-  safe-search-radius: 96
-  # Chunks around the spawn that are generated before the players are released.
-  preload-radius: 3
-
 reset:
-  # Countdown (seconds) before the players are moved to limbo. 0 = instant.
+  # Seconds before everybody is moved to the limbo, and in the limbo once the new world is ready.
   countdown: 5
-  # Countdown (seconds) in limbo after the new world is ready.
   limbo-countdown: 5
-  # Keep the next overworld generated in the background (with a safe spawn and loaded chunks). A reset
-  # then moves everybody straight into it - no limbo, no waiting. The limbo is only used when nothing is
-  # preloaded (yet), for a reset with a different seed, or for the first world. If the seed or world
-  # settings change, the preloaded world is thrown away and generated again with the new settings.
-  # The old worlds are still backed up and deleted after the reset; nether/end are regenerated then
-  # (only the overworld is preloaded). Off by default.
-  preload: false
-  # Seconds after a run started before the next overworld is generated (avoids lag at the start).
-  preload-delay: 15
-  # Also register /reset as a shortcut for /magicreset reset (needs a restart).
-  shortcut-command: true
-  # Reset all scores of the main scoreboard (vanilla /scoreboard objectives) on every reset.
-  clear-scoreboard-scores: false
   # What happens to every player when a new run starts.
   player:
     clear-inventory: true
@@ -91,105 +21,72 @@ reset:
     reset-respawn-point: true
     game-mode: SURVIVAL
 
-limbo:
-  # The void world players wait in while the worlds are regenerated or the run is paused.
-  platform-block: BLACK_STAINED_GLASS
-  platform-radius: 4
-  platform-height: 100
-  game-mode: ADVENTURE
+seed:
+  # RANDOM = a new seed every reset, FIXED = always the seed below.
+  mode: RANDOM
+  fixed: ''
+  # Show the seed to players (admins always see it with /mr seed).
+  show: true
+
+backups:
+  # Keep a copy of the old worlds in plugins/MagicReset/backups (the last 5 resets).
+  enabled: true
+
+worlds:
+  # Nether and end are part of the game (and reset with it).
+  nether: true
+  end: true
+  # NORMAL, FLAT, LARGE_BIOMES or AMPLIFIED
+  type: NORMAL
+  # PEACEFUL, EASY, NORMAL or HARD
+  difficulty: NORMAL
+  generate-structures: true
+  # World border diameter in blocks, 0 = no border.
+  world-border: 0
+  # Game rules for every new world, e.g.  minecraft:keep_inventory: true
+  game-rules: {}
+  # The vanilla locator bar (other players above the hotbar).
+  locator-bar: true
 
 timer:
-  # false = no timer at all: nothing in the action bar or sidebar, no times on the leaderboard.
-  # Good for just playing without speedrunning.
+  # false = no timer at all.
   enabled: true
-  # RTA = real time (wall clock, keeps running even when nobody is online)
-  # IGT = in-game play time (counts server ticks while players are in the game)
+  # RTA = real time, IGT = in-game time (only counts while the server runs the game).
   mode: RTA
-  # GLOBAL = one shared timer, the first player to reach the goal stops it.
-  # INDIVIDUAL = every player has an own timer that stops when they reach the goal.
-  scope: GLOBAL
-  # When the timer starts (also /magicreset timer start-on-move on|off):
-  # AUTO = as soon as the players enter the new world
-  # FIRST_INPUT = only when a player moves (or jumps/sneaks/interacts) for the first time,
-  #               standing still after the countdown does not count
-  # MANUAL = only with /magicreset timer start
+  # AUTO = when the run starts, FIRST_INPUT = on the first movement, MANUAL = /mr timer start
   start: AUTO
-  # Stop the timer (RTA and IGT) while nobody is playing - e.g. everybody disconnected - and continue it
-  # when someone is back. With start: FIRST_INPUT it continues on their first movement.
-  # In INDIVIDUAL scope each player's timer stops while that player is offline.
-  # Also /magicreset timer stop-when-empty on|off.
+  # Stop the timer while nobody is online.
   stop-when-empty: false
-  # true: a player's death stops the timer until they respawn (the death screen does not count).
-  # In GLOBAL scope the shared timer waits until every dead player has respawned.
-  # Also /magicreset timer pause-while-dead on|off.
+  # Stop the timer while a player is dead, continue on respawn.
   pause-while-dead: false
-  # IGT only: stop counting while no player is in the game worlds (independent of stop-when-empty).
-  igt-pause-when-empty: true
-  # Time format in the action bar, sidebar and leaderboard. "auto" uses style + decimals below,
-  # or a pattern: H = hours, m = minutes, s = seconds, S = fractions (S/SS/SSS); doubled letters are
-  # zero padded. Examples: HH:mm:ss, mm:ss.SSS, H:mm:ss.SS. Also /magicreset timer format <pattern>.
+  # "auto" (1:02:03.45) or a pattern like HH:mm:ss or mm:ss.SSS
   format: auto
-  # Fractional digits shown in the action bar (0-3). Chat output always uses 3.
-  decimals: 2
-  # DIGITAL = 1:02:03.45   TEXT = 1h 02m 03.45s
-  style: DIGITAL
-  # Show the timer in the action bar.
-  action-bar: true
-  # Show "00:00.00" before the timer started.
-  show-when-idle: true
-  # Action bar refresh rate in ticks (1 = every tick).
-  update-interval: 1
 
 goal:
-  # NONE, BEAT_GAME, KILL_ENTITY, ENTER_DIMENSION, ADVANCEMENT, BREAK_BLOCK, OBTAIN_ITEM, FIND_BIOME or FIND_STRUCTURE
-  # BEAT_GAME = "Beat Minecraft": leave the end through the exit portal after killing the dragon (no target)
-  type: KILL_ENTITY
-  # KILL_ENTITY: an entity (minecraft:ender_dragon, minecraft:wither, ...)
-  # ENTER_DIMENSION: minecraft:the_nether, minecraft:the_end or minecraft:overworld
-  # ADVANCEMENT: an advancement (minecraft:story/enter_the_end, ...)
-  # BREAK_BLOCK / OBTAIN_ITEM: a block / item (minecraft:diamond_ore, minecraft:diamond, ...)
-  # FIND_BIOME / FIND_STRUCTURE: a biome / structure (minecraft:mushroom_fields, minecraft:stronghold, ...)
-  target: minecraft:ender_dragon
-  # How often (KILL_ENTITY, BREAK_BLOCK) or how many (OBTAIN_ITEM).
+  # NONE, BEAT_GAME, KILL_ENTITY, ENTER_DIMENSION, ADVANCEMENT, BREAK_BLOCK, OBTAIN_ITEM, FIND_BIOME, FIND_STRUCTURE
+  type: BEAT_GAME
+  # The mob, dimension, advancement, block, item, biome or structure, e.g. minecraft:ender_dragon
+  target: ''
   amount: 1
-  # Put players into spectator mode when they finished.
-  spectator-on-finish: false
-  # Seconds after the run is completed until an automatic reset, -1 = never.
-  reset-after: -1
 
 deaths:
-  # OFF = deaths are only counted
-  # HARDCORE = the first death fails the run
-  # SHARED_LIVES = all players share "shared-lives" lives
+  # OFF = deaths are only counted, HARDCORE = the first death ends the run, SHARED_LIVES = everybody shares the lives
   mode: 'OFF'
   shared-lives: 3
-  # Put everybody into spectator mode when the run failed.
-  spectator-on-fail: true
-  # Seconds after a failed run until an automatic reset, -1 = never.
+  # Seconds after a failed run until a new one starts, -1 = never.
   reset-after: 10
 
-auto-reset:
-  # Seconds before a scheduled reset at which a warning is broadcast.
-  warnings: [3600, 1800, 600, 300, 60, 30, 10, 5, 4, 3, 2, 1]
-
-scoreboard:
-  # false = no sidebar for anybody.
-  enabled: true
-  # Show the sidebar to players who did not toggle it with /magicreset scoreboard.
-  # The sidebar uses its own scoreboard, so teams/objectives of the main scoreboard are
-  # not visible to players who have it enabled.
-  enabled-by-default: true
-  update-interval: 10
-
 manhunt:
-  # Magic Manhunt (/manhunt, /mm): targets try to reach the goal above, everybody else hunts them.
-  # The hunters see the targets on the locator bar, the targets see nobody.
+  # Targets run, everybody else hunts them (/manhunt). The goal above is what the targets have to do.
   enabled: false
-  # Lives of every target; the hunters win when all targets lost all lives.
   target-lives: 1
-  # Seconds the hunters are frozen at the start.
+  # Seconds the hunters have to wait at the start.
   head-start: 30
-  # Give hunters a compass; right-click points it at the nearest target in the same dimension.
   hunter-compass: true
-  # Seconds after the manhunt ended until an automatic reset, -1 = never.
-  reset-after: -1
+
+sidebar:
+  # The scoreboard on the right side (time, goal, deaths; the leaderboard in the limbo).
+  enabled: true
+
+# Do not change: used to update this file when MagicReset changes it.
+config-version: 2

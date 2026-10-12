@@ -237,7 +237,9 @@ public final class Settings {
         );
 
         List<Integer> warnings = new ArrayList<>();
-        for (Integer seconds : config.getIntegerList("auto-reset.warnings")) {
+        List<Integer> configured = config.contains("auto-reset.warnings")
+            ? config.getIntegerList("auto-reset.warnings") : List.of(3600, 1800, 600, 300, 60, 30, 10, 5, 4, 3, 2, 1);
+        for (Integer seconds : configured) {
             if (seconds != null && seconds > 0) {
                 warnings.add(seconds);
             }
@@ -252,7 +254,7 @@ public final class Settings {
             config.getInt("manhunt.reset-after", -1)
         );
         this.scoreboard = new Scoreboard(
-            config.getBoolean("scoreboard.enabled", true),
+            config.getBoolean("sidebar.enabled", true),
             config.getBoolean("scoreboard.enabled-by-default", true),
             Math.clamp(config.getInt("scoreboard.update-interval", 10), 1, 100)
         );
@@ -261,7 +263,7 @@ public final class Settings {
     }
 
     private Goal readGoal(FileConfiguration config) {
-        GoalType type = this.enumValue(GoalType.class, config.getString("goal.type"), GoalType.KILL_ENTITY, "goal.type");
+        GoalType type = this.enumValue(GoalType.class, config.getString("goal.type"), GoalType.BEAT_GAME, "goal.type");
         if (!type.needsTarget()) {
             return type == GoalType.NONE ? Goal.NONE : new Goal(type, null, 1);
         }

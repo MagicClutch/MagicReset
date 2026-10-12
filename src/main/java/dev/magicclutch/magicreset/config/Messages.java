@@ -53,6 +53,7 @@ public final class Messages {
         boolean changed = false;
         if (this.messages.getInt("version", 0) < defaults.getInt("version")) {
             // the menu labels belong to the menu layout of the version, older ones would not fit anymore
+            this.messages.set("menu", null);
             for (String key : defaults.getKeys(true)) {
                 if (key.startsWith("menu.") && !defaults.isConfigurationSection(key)) {
                     this.messages.set(key, defaults.get(key));
