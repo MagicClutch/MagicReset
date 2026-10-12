@@ -4,6 +4,9 @@
 #  <prefix> can be used in every message. An empty message ('') is not sent.
 # ======================================================================================
 
+# Raised when the menu texts change; an older file gets the new menu: texts (other texts are kept).
+version: 2
+
 prefix: '<gradient:#a855f7:#6366f1><bold>MagicReset</bold></gradient> <dark_gray>»</dark_gray> '
 
 players-only: '<prefix><red>Only players can use this command.'
@@ -206,7 +209,6 @@ menu:
     display: '<white><bold>✎ Display'
     autoreset: '<aqua><bold>⏲ Auto reset'
     manhunt: '<gradient:#ef4444:#f97316><bold>⚔ Magic Manhunt</bold></gradient>'
-  # the switches on the main page change without reloading; any button (or Save & close) saves them
   status: '<white>Run <yellow>#<run></yellow> <dark_gray>(<phase>)</dark_gray><newline><gray>⌚ Time</gray> <yellow><time></yellow> <dark_gray><mode></dark_gray><newline><gray>⚑ Goal</gray> <white><goal></white><newline><gray>✿ Seed</gray> <white><seed></white><newline><gray>⚔ Manhunt</gray> <white><manhunt></white>'
   body:
     reset-now: '<white>Choose which worlds are deleted.</white><newline><gray>Without the overworld the run goes on and only the nether/end become new.'
@@ -234,7 +236,8 @@ menu:
     goal: '<light_purple>⚑ Goal'
     timer: '<gold>⌚ Timer settings'
     goal-current: '<light_purple>⚑ Goal: <white><goal>'
-    save-close: '<green>✔ Save & close'
+    # main page switches, e.g. "Sidebar: On"
+    switch: '<gray><name>:</gray> <value>'
     manhunt: '<#f97316>⚔ Manhunt'
     autoreset: '<aqua>⏲ Auto reset'
     deaths: '<red>☠ Death rules'
@@ -259,6 +262,7 @@ menu:
     close: '<gray>✖ Close'
     manhunt-start: '<#f97316><bold>⚔ Save & start'
   tooltip:
+    mode: 'Speedrun = timer and goal, Free play = no timer, Manhunt = hunters vs. targets'
     goal-find-biome: 'Be the first to find a biome, e.g. Mushroom Fields'
     goal-find-structure: 'Be the first to find a structure, e.g. a Stronghold'
     goal-none: 'No goal - the timer runs until you stop it'
@@ -297,9 +301,9 @@ menu:
   field:
     timer:
       enabled: 'Timer'
-      mode: 'Timer counts'
+      mode: 'Clock'
       scope: 'Timer for'
-      start: 'Starts'
+      start: 'Timer starts'
       stop-when-empty: 'Stop while nobody is playing'
       igt-pause-when-empty: 'IGT: stop while nobody is in the game'
       format: 'Format - e.g. HH:mm:ss, mm:ss.SSS or auto'
@@ -365,12 +369,12 @@ menu:
     auto-reset:
       warnings: 'Warnings before a reset (s) - e.g. 300, 60, 10, 5, 1'
   option:
-    rta: 'Real time (RTA)'
-    igt: 'In-game time (IGT)'
+    rta: 'Real time'
+    igt: 'In-game time'
     global: 'Everybody together'
     individual: 'Each player'
     auto: 'At the start'
-    first-input: 'On first movement'
+    first-input: 'First movement'
     manual: 'Manually'
     none: '✖ No goal'
     beat-game: '★ Beat Minecraft'
@@ -403,6 +407,9 @@ menu:
     speedrun: 'Speedrun'
     manhunt: 'Manhunt'
     free: 'Free play'
+  state:
+    enabled: '<green>On'
+    disabled: '<red>Off'
   mode-set: '<prefix><green>Mode: <white><mode></white>.'
   saved: '<prefix><green>✔ Saved.'
   error: '<prefix><red>Something went wrong in the menu - the details are in the server console.'

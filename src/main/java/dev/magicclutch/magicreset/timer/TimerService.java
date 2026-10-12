@@ -268,6 +268,30 @@ public final class TimerService {
         this.individual.values().forEach(RunTimer::finish);
     }
 
+    /**
+     * The start setting (auto / first movement / manual) was changed during a run. In the first minute the timer
+     * starts over with the new setting, e.g. it waits for the first movement; a run that is already going on
+     * keeps its time and the setting applies from the next run on.
+     */
+    public void onTriggerChanged(Collection<? extends Player> participants) {
+        if (!this.armed || this.ended) {
+            return;
+        }
+        long longest = this.global.millis(TimerMode.RTA);
+        for (RunTimer timer : this.individual.values()) {
+            longest = Math.max(longest, timer.millis(TimerMode.RTA));
+        }
+        if (longest > 60_000L) {
+            return;
+        }
+        this.resetAll();
+        this.globalAutoPaused = false;
+        this.autoPaused.clear();
+        this.started = false;
+        this.paused = false;
+        this.begin(participants);
+    }
+
     public void resetAll() {
         this.global.reset();
         this.individual.clear();

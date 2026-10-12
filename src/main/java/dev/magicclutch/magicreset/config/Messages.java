@@ -43,7 +43,7 @@ public final class Messages {
 
     /**
      * Messages added in a newer version are written into the server's messages.yml, so they can be edited
-     * there as well. Existing texts are never changed.
+     * there as well. Existing texts are kept, except the menu texts when the file's version is older.
      */
     private void addMissingKeys(File file, JavaPlugin plugin) {
         var defaults = this.messages.getDefaults();
@@ -51,6 +51,17 @@ public final class Messages {
             return;
         }
         boolean changed = false;
+        if (this.messages.getInt("version", 0) < defaults.getInt("version")) {
+            // the menu labels belong to the menu layout of the version, older ones would not fit anymore
+            for (String key : defaults.getKeys(true)) {
+                if (key.startsWith("menu.") && !defaults.isConfigurationSection(key)) {
+                    this.messages.set(key, defaults.get(key));
+                }
+            }
+            this.messages.set("version", defaults.getInt("version"));
+            plugin.getLogger().info("Updated the menu texts in " + FILE_NAME);
+            changed = true;
+        }
         for (String key : defaults.getKeys(true)) {
             if (!defaults.isConfigurationSection(key) && !this.messages.isSet(key)) {
                 this.messages.set(key, defaults.get(key));

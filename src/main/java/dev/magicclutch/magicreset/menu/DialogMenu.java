@@ -71,8 +71,11 @@ public final class DialogMenu {
     private static final String PERM = "magicreset.command.";
     private static final List<String> WORLD_TYPES = List.of("NORMAL", "FLAT", "LARGE_BIOMES", "AMPLIFIED");
 
-    /** Main page switches next to the timer: config path and the permission node they need. */
+    /** Main page switches: config path and the permission node they need. */
     private static final List<String[]> QUICK_SWITCHES = List.of(
+        new String[] {"timer.enabled", "timer"},
+        new String[] {"timer.mode", "timer"},
+        new String[] {"timer.start", "timer"},
         new String[] {"scoreboard.enabled", "reload"},
         new String[] {"worlds.locator-bar", "locatorbar"},
         new String[] {"seed.show", "seed"},
@@ -86,6 +89,8 @@ public final class DialogMenu {
     private final GameManager game;
     private final TimerService timers;
     private final HudService hud;
+    /** Counts opened screens, so a click can tell whether it opened one. */
+    private int shown;
 
     public DialogMenu(MagicReset plugin, GameManager game, TimerService timers, HudService hud) {
         this.plugin = plugin;
@@ -208,40 +213,20 @@ public final class DialogMenu {
     }
 
     /**
-     * The only overview page. The switches at the top change right in the screen without reloading it and are
-     * saved by any button; the buttons below open the screens for the details.
+     * The only overview page: first a button for every topic, below them the switches that change with one
+     * click (their label shows the current value).
      */
     private void openMain(Player player) {
         if (!this.isAdmin(player)) {
             this.openInfoUnsafe(player);
             return;
         }
-        FileConfiguration config = this.plugin.getConfig();
-        String mode = this.currentMode();
-        List<DialogInput> inputs = new ArrayList<>();
-        if (player.hasPermission(PERM + "goal") && player.hasPermission(PERM + "timer")) {
-            List<SingleOptionDialogInput.OptionEntry> modes = new ArrayList<>();
-            for (String option : List.of("speedrun", "free", "manhunt")) {
-                modes.add(SingleOptionDialogInput.OptionEntry.create(option, this.text("mode." + option), option.equals(mode)));
-            }
-            inputs.add(DialogInput.singleOption("mode", this.text("input.mode"), modes).width(WIDE).build());
-        }
-        if (player.hasPermission(PERM + "timer")) {
-            inputs.add(this.input(SettingField.bool("timer.enabled"), config));
-            inputs.add(this.input(SettingField.choice("timer.mode", TimerMode.values()), config));
-        }
-        for (String[] quick : QUICK_SWITCHES) {
-            if (player.hasPermission(PERM + quick[1])) {
-                inputs.add(this.input(SettingField.bool(quick[0]), config));
-            }
-        }
-
         List<ActionButton> buttons = new ArrayList<>();
         if (player.hasPermission(PERM + "reset")) {
-            buttons.add(this.mainButton(player, mode, this.text("button.reset-now"), () -> this.openResetNow(player)));
+            buttons.add(this.button(this.text("button.reset-now"), null, (response, audience) -> this.openResetNow(player)));
         }
         if (player.hasPermission(PERM + "goal")) {
-            buttons.add(this.mainButton(player, mode, this.text("button.goal-current", this.game.goalPlaceholder()), () -> this.openGoal(player)));
+            buttons.add(this.button(this.text("button.goal-current", this.game.goalPlaceholder()), null, (response, audience) -> this.openGoal(player)));
         }
         if (player.hasPermission(PERM + "timer") && this.settings().timer().enabled()) {
             RunTimer.State state = this.timers.displayed(player).state();
@@ -250,102 +235,112 @@ public final class DialogMenu {
                 case PAUSED -> "button.timer-resume";
                 default -> "button.timer-start";
             };
-            buttons.add(this.mainButton(player, mode, this.text(key), () -> {
+            buttons.add(this.button(this.text(key), null, (response, audience) -> {
                 switch (state) {
                     case RUNNING -> this.timers.pauseAll();
                     case PAUSED -> this.timers.resumeAll();
                     default -> this.timers.startAll(this.participants());
                 }
                 this.game.saveAsync();
-                player.closeDialog();
             }));
         }
         if (player.hasPermission("magicreset.manhunt")) {
-            buttons.add(this.mainButton(player, mode, this.text("button.manhunt"), () -> this.openManhuntUnsafe(player)));
+            buttons.add(this.button(this.text("button.manhunt"), null, (response, audience) -> this.openManhuntUnsafe(player)));
         }
         if (player.hasPermission(PERM + "timer")) {
-            buttons.add(this.mainButton(player, mode, this.text("button.timer"), () -> this.openTimer(player)));
+            buttons.add(this.button(this.text("button.timer"), null, (response, audience) -> this.openTimer(player)));
         }
-        for (String id : List.of("deaths", "seed", "worlds")) {
-            this.sectionButton(buttons, player, mode, id);
-        }
+        this.sectionButton(buttons, player, "deaths");
+        this.sectionButton(buttons, player, "seed");
+        this.sectionButton(buttons, player, "worlds");
         if (player.hasPermission(PERM + "autoreset")) {
-            buttons.add(this.mainButton(player, mode, this.text("button.autoreset"), () -> this.openAutoReset(player)));
+            buttons.add(this.button(this.text("button.autoreset"), null, (response, audience) -> this.openAutoReset(player)));
         }
         for (String id : List.of("backups", "players", "limbo", "reset", "display")) {
-            this.sectionButton(buttons, player, mode, id);
+            this.sectionButton(buttons, player, id);
         }
-        buttons.add(this.mainButton(player, mode, this.text("button.leaderboard"), () -> this.openInfoUnsafe(player)));
+        buttons.add(this.button(this.text("button.leaderboard"), null, (response, audience) -> this.openInfoUnsafe(player)));
+        ActionButton reload = null;
         if (player.hasPermission(PERM + "reload")) {
-            buttons.add(this.mainButton(player, mode, this.text("button.reload"), () -> {
+            reload = this.button(this.text("button.reload"), null, (response, audience) -> {
                 String warning = this.plugin.reload();
                 this.messages().send(player, "reloaded");
                 if (warning != null) {
                     this.messages().send(player, "reload-warning", Placeholder.unparsed("warning", warning));
                 }
-                player.closeDialog();
-            }));
+            });
+            buttons.add(reload);
+        }
+        // the switches start on a new row
+        if (buttons.size() % 2 == 1 && reload != null) {
+            buttons.remove(reload);
+        } else {
+            reload = null;
+        }
+
+        if (player.hasPermission(PERM + "goal") && player.hasPermission(PERM + "timer")) {
+            String mode = this.currentMode();
+            buttons.add(this.button(this.text("button.switch", Placeholder.component("name", this.text("input.mode")),
+                Placeholder.component("value", this.text("mode." + mode))), this.text("tooltip.mode"), (response, audience) -> {
+                    this.switchMode(player, switch (mode) {
+                        case "speedrun" -> "free";
+                        case "free" -> "manhunt";
+                        default -> "speedrun";
+                    });
+                    this.openMain(player);
+                }));
+        }
+        for (String[] quick : QUICK_SWITCHES) {
+            if (player.hasPermission(PERM + quick[1])) {
+                buttons.add(this.switchButton(player, this.quickField(quick[0])));
+            }
+        }
+        if (reload != null) {
+            buttons.add(reload);
         }
 
         DialogBase base = DialogBase.builder(this.text("title.main"))
             .body(List.of(this.header(this.statusText(player))))
-            .inputs(inputs)
             .canCloseWithEscape(true)
-            // switches change in place, nothing reloads until a button opens another screen;
-            // a dialog that stays open must not pause the game (Paper rejects it)
-            .pause(false)
-            .afterAction(DialogBase.DialogAfterAction.NONE)
             .build();
-        ActionButton saveAndClose = this.mainButton(player, mode, this.text("button.save-close"), player::closeDialog);
-        this.show(player, base, DialogType.multiAction(buttons).columns(2).exitAction(saveAndClose).build());
+        this.show(player, base, DialogType.multiAction(buttons).columns(2).exitAction(this.closeButton()).build());
     }
 
-    /** A main page button: saves the switches first, then does its job. */
-    private ActionButton mainButton(Player player, String mode, Component label, Runnable action) {
+    private SettingField quickField(String path) {
+        return switch (path) {
+            case "timer.mode" -> SettingField.choice(path, TimerMode.values());
+            case "timer.start" -> SettingField.choice(path, StartTrigger.values());
+            default -> SettingField.bool(path);
+        };
+    }
+
+    /** "Sidebar: On" - a click flips it (or picks the next choice) and shows the page again. */
+    private ActionButton switchButton(Player player, SettingField field) {
+        FileConfiguration config = this.plugin.getConfig();
+        Component value;
+        Object next;
+        if (field.kind() == SettingField.Kind.BOOL) {
+            boolean on = config.getBoolean(field.path());
+            value = this.text(on ? "state.enabled" : "state.disabled");
+            next = !on;
+        } else {
+            String current = String.valueOf(config.getString(field.path(), field.options().getFirst())).toUpperCase(Locale.ROOT);
+            int index = Math.max(0, field.options().indexOf(current));
+            value = this.text(SettingField.optionKey(field.options().get(index)));
+            next = field.options().get((index + 1) % field.options().size());
+        }
+        Component label = this.text("button.switch", Placeholder.component("name", this.text(field.labelKey())), Placeholder.component("value", value));
         return this.button(label, null, (response, audience) -> {
-            this.saveSwitches(player, response, mode);
-            action.run();
+            this.plugin.setConfigValue(field.path(), next);
+            this.plugin.worlds().applyLocatorBar();
+            this.openMain(player);
         });
     }
 
-    private void sectionButton(List<ActionButton> buttons, Player player, String mode, String id) {
+    private void sectionButton(List<ActionButton> buttons, Player player, String id) {
         Section section = this.section(id);
         if (player.hasPermission(section.permission())) {
-            buttons.add(this.mainButton(player, mode, this.text("button." + id), () -> this.openSection(player, section)));
-        }
-    }
-
-    /** Applies the main page switches; only what was actually changed is written. */
-    private void saveSwitches(Player player, DialogResponseView response, String oldMode) {
-        FileConfiguration config = this.plugin.getConfig();
-        String mode = response.getText("mode");
-        if (mode != null && !mode.equals(oldMode) && player.hasPermission(PERM + "goal") && player.hasPermission(PERM + "timer")) {
-            this.switchMode(player, mode);
-            // the mode decides the timer, the timer switch below would undo it
-            return;
-        }
-        Map<String, Object> values = new LinkedHashMap<>();
-        if (player.hasPermission(PERM + "timer")) {
-            this.changed(values, config, "timer.enabled", response.getBoolean("timer_enabled"));
-            String timerMode = response.getText("timer_mode");
-            if (timerMode != null && !timerMode.equalsIgnoreCase(config.getString("timer.mode"))) {
-                values.put("timer.mode", timerMode);
-            }
-        }
-        for (String[] quick : QUICK_SWITCHES) {
-            if (player.hasPermission(PERM + quick[1])) {
-                this.changed(values, config, quick[0], response.getBoolean(SettingField.bool(quick[0]).inputName()));
-            }
-        }
-        if (!values.isEmpty()) {
-            this.plugin.setConfigValues(values);
-            this.plugin.worlds().applyLocatorBar();
-        }
-    }
-
-    private void changed(Map<String, Object> values, FileConfiguration config, String path, @Nullable Boolean value) {
-        if (value != null && value != config.getBoolean(path)) {
-            values.put(path, value);
+            buttons.add(this.button(this.text("button." + id), null, (response, audience) -> this.openSection(player, section)));
         }
     }
 
@@ -999,8 +994,15 @@ public final class DialogMenu {
         return DialogBody.plainMessage(description, WIDE);
     }
 
+    /**
+     * Every screen stays open after a click until the next one replaces it, so switching screens does not flash
+     * the game in between; a click that opens nothing closes the menu (see {@link #button}).
+     */
     private void show(Player player, DialogBase base, DialogType type) {
-        Dialog dialog = Dialog.create(builder -> builder.empty().base(base).type(type));
+        DialogBase stay = DialogBase.create(base.title(), base.externalTitle(), base.canCloseWithEscape(), false,
+            DialogBase.DialogAfterAction.NONE, base.body(), base.inputs());
+        Dialog dialog = Dialog.create(builder -> builder.empty().base(stay).type(type));
+        this.shown++;
         player.showDialog(dialog);
     }
 
@@ -1028,7 +1030,13 @@ public final class DialogMenu {
                     return;
                 }
                 // dialog callbacks may arrive off the main thread; everything here touches the game
-                Runnable run = () -> this.safely(player, "button", () -> action.accept(response, audience));
+                Runnable run = () -> {
+                    int before = this.shown;
+                    this.safely(player, "button", () -> action.accept(response, audience));
+                    if (this.shown == before) {
+                        player.closeDialog();
+                    }
+                };
                 if (Bukkit.isPrimaryThread()) {
                     run.run();
                 } else {
@@ -1043,7 +1051,8 @@ public final class DialogMenu {
     }
 
     private ActionButton closeButton() {
-        return ActionButton.builder(this.text("button.close")).width(150).build();
+        return this.button(this.text("button.close"), null, (response, audience) -> {
+        });
     }
 
     private DialogInput textInput(String key, Component label, String initial, int maxLength) {

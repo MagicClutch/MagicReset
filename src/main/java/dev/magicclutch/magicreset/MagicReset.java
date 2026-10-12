@@ -146,9 +146,14 @@ public final class MagicReset extends JavaPlugin {
 
     /** Like {@link #setConfigValue(String, Object)} for several values with a single write. */
     public void setConfigValues(Map<String, ?> values) {
+        var oldTrigger = this.settings.timer().start();
         values.forEach((path, value) -> this.getConfig().set(path, value));
         this.saveConfig();
         this.settings = new Settings(this.getConfig(), this.getLogger());
+        if (this.settings.timer().start() != oldTrigger && this.timers != null) {
+            this.timers.onTriggerChanged(this.getServer().getOnlinePlayers().stream()
+                .filter(player -> this.worlds.isGameWorld(player.getWorld())).toList());
+        }
     }
 
     /** Called while saving data.yml so other components can store their state. */

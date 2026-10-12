@@ -110,11 +110,11 @@ search/creation and the obsidian platform work like in vanilla).
 `/magicreset` (or `/mr`) without arguments opens an in-game menu built with the server-side dialog screens
 (Minecraft 1.21.6+, no client mod needed). Everything is on one page:
 
-- **Switches at the top** – mode (Speedrun / Free play / Manhunt), timer on/off, real or in-game time, sidebar,
-  locator bar, show seed and backups. They change right in the screen without reloading it; any button or
-  **✔ Save & close** saves them.
-- **Buttons below** – reset now, goal, start/pause the timer, manhunt, and one button per topic (timer, death
-  rules, seed, worlds, auto reset, backups, players, limbo, reset, display), the leaderboard and reload.
+- **Buttons at the top** – reset now, goal, start/pause the timer, manhunt, and one button per topic (timer,
+  death rules, seed, worlds, auto reset, backups, players, limbo, reset, display), leaderboard and reload.
+- **Switches below** – mode (Speedrun / Free play / Manhunt), timer on/off, clock (real / in-game time), when
+  the timer starts, sidebar, locator bar, show seed and backups. The label shows the current value, a click
+  changes it right away.
 
 Every button needs the same permission as the matching command. Players without admin permissions see an info
 view with the run status and the leaderboard.
