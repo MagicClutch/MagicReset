@@ -54,7 +54,6 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -68,7 +67,7 @@ import org.jspecify.annotations.Nullable;
 public final class DialogMenu {
 
     private static final ClickCallback.Options ONCE = ClickCallback.Options.builder().uses(1).lifetime(Duration.ofMinutes(15)).build();
-    private static final int WIDE = 220;
+    private static final int WIDE = 300;
     private static final String PERM = "magicreset.command.";
     private static final List<String> WORLD_TYPES = List.of("NORMAL", "FLAT", "LARGE_BIOMES", "AMPLIFIED");
 
@@ -80,7 +79,7 @@ public final class DialogMenu {
         new String[] {"backups.enabled", "backup"});
 
     /** A screen of plain settings. */
-    private record Section(String id, Material icon, String permission, String parent, List<SettingField> fields) {
+    private record Section(String id, String permission, String parent, List<SettingField> fields) {
     }
 
     private final MagicReset plugin;
@@ -113,7 +112,7 @@ public final class DialogMenu {
 
     private List<Section> sections() {
         return List.of(
-            new Section("timer", Material.CLOCK, PERM + "timer", "main", List.of(
+            new Section("timer", PERM + "timer", "main", List.of(
                 SettingField.bool("timer.enabled"),
                 SettingField.choice("timer.mode", TimerMode.values()),
                 SettingField.choice("timer.scope", TimerScope.values()),
@@ -126,12 +125,12 @@ public final class DialogMenu {
                 SettingField.bool("timer.action-bar"),
                 SettingField.bool("timer.show-when-idle"),
                 SettingField.number("timer.update-interval", 1, 20, 1))),
-            new Section("deaths", Material.TOTEM_OF_UNDYING, PERM + "deaths", "main", List.of(
+            new Section("deaths", PERM + "deaths", "main", List.of(
                 SettingField.choice("deaths.mode", DeathMode.values()),
                 SettingField.number("deaths.shared-lives", 1, 50, 1),
                 SettingField.bool("deaths.spectator-on-fail"),
                 SettingField.number("deaths.reset-after", -1, 600, 1))),
-            new Section("worlds", Material.GRASS_BLOCK, PERM + "worlds", "main", List.of(
+            new Section("worlds", PERM + "worlds", "main", List.of(
                 SettingField.bool("worlds.nether"),
                 SettingField.bool("worlds.end"),
                 SettingField.choice("worlds.type", WORLD_TYPES),
@@ -142,11 +141,11 @@ public final class DialogMenu {
                 SettingField.text("worlds.world-border", 9, DialogMenu::validateNonNegativeNumber),
                 SettingField.map("worlds.game-rules"),
                 SettingField.bool("worlds.use-main-nether-end"))),
-            new Section("seed", Material.WHEAT_SEEDS, PERM + "seed", "main", List.of(
+            new Section("seed", PERM + "seed", "main", List.of(
                 SettingField.choice("seed.mode", SeedMode.values()),
                 SettingField.text("seed.fixed", 64, null),
                 SettingField.bool("seed.show"))),
-            new Section("reset", Material.REPEATER, PERM + "reset", "main", List.of(
+            new Section("reset", PERM + "reset", "main", List.of(
                 SettingField.number("reset.countdown", 0, 120, 1),
                 SettingField.number("reset.limbo-countdown", 0, 120, 1),
                 SettingField.bool("reset.preload"),
@@ -155,7 +154,7 @@ public final class DialogMenu {
                 SettingField.bool("reset.shortcut-command"),
                 SettingField.number("spawn.safe-search-radius", 0, 512, 16),
                 SettingField.number("spawn.preload-radius", 0, 12, 1))),
-            new Section("players", Material.LEATHER_CHESTPLATE, PERM + "reset", "main", List.of(
+            new Section("players", PERM + "reset", "main", List.of(
                 SettingField.bool("reset.player.clear-inventory"),
                 SettingField.bool("reset.player.clear-ender-chest"),
                 SettingField.bool("reset.player.reset-health"),
@@ -166,16 +165,16 @@ public final class DialogMenu {
                 SettingField.bool("reset.player.revoke-recipes"),
                 SettingField.bool("reset.player.reset-respawn-point"),
                 SettingField.choice("reset.player.game-mode", GameMode.values()))),
-            new Section("limbo", Material.ENDER_PEARL, PERM + "reset", "main", List.of(
+            new Section("limbo", PERM + "reset", "main", List.of(
                 SettingField.text("limbo.platform-block", 48, DialogMenu::validateBlock),
                 SettingField.number("limbo.platform-radius", 1, 32, 1),
                 SettingField.number("limbo.platform-height", -32, 300, 1),
                 SettingField.choice("limbo.game-mode", GameMode.values()))),
-            new Section("backups", Material.CHEST, PERM + "backup", "main", List.of(
+            new Section("backups", PERM + "backup", "main", List.of(
                 SettingField.bool("backups.enabled"),
                 SettingField.number("backups.keep", 0, 50, 1),
                 SettingField.text("backups.folder", 128, value -> value.isBlank() ? "menu.invalid-text" : null))),
-            new Section("display", Material.OAK_SIGN, PERM + "reload", "main", List.of(
+            new Section("display", PERM + "reload", "main", List.of(
                 SettingField.bool("scoreboard.enabled"),
                 SettingField.bool("scoreboard.enabled-by-default"),
                 SettingField.number("scoreboard.update-interval", 1, 100, 1),
@@ -290,7 +289,7 @@ public final class DialogMenu {
         }
 
         DialogBase base = DialogBase.builder(this.text("title.main"))
-            .body(List.of(this.icon(Material.CLOCK, this.statusText(player))))
+            .body(List.of(this.header(this.statusText(player))))
             .inputs(inputs)
             .canCloseWithEscape(true)
             // switches change in place, nothing reloads until a button opens another screen;
@@ -425,7 +424,7 @@ public final class DialogMenu {
             }));
         }
         DialogBase base = DialogBase.builder(this.text("title.info"))
-            .body(List.of(this.icon(Material.CLOCK, this.statusText(player)), this.icon(Material.GOLD_INGOT, board)))
+            .body(List.of(this.header(this.statusText(player)), this.header(board)))
             .canCloseWithEscape(true)
             .build();
         if (buttons.isEmpty()) {
@@ -445,7 +444,7 @@ public final class DialogMenu {
         for (SettingField field : section.fields()) {
             inputs.add(this.input(field, config));
         }
-        this.form(player, section.icon(), "title." + section.id(), this.text("body." + section.id()), inputs, section.permission(), section.parent(), response -> {
+        this.form(player, "title." + section.id(), this.text("body." + section.id(), Placeholder.unparsed("worlds", this.game.resetWorldList())), inputs, section.permission(), section.parent(), response -> {
             Map<String, Object> values = new LinkedHashMap<>();
             for (SettingField field : section.fields()) {
                 if (!this.read(player, field, response, config, values)) {
@@ -576,7 +575,7 @@ public final class DialogMenu {
         }
         inputs.add(this.slider("countdown", this.text("input.countdown"), 0, 120, 1, reset.countdown()));
         inputs.add(this.slider("limbo", this.text("input.limbo-countdown"), 0, 120, 1, reset.limboCountdown()));
-        this.form(player, Material.TNT, "title.reset-now", this.text("body.reset-now"), inputs, PERM + "reset", "main",
+        this.form(player, "title.reset-now", this.text("body.reset-now"), inputs, PERM + "reset", "main",
             this.text("button.reset-now"), response -> {
                 Set<GameWorlds.Dimension> selection = EnumSet.noneOf(GameWorlds.Dimension.class);
                 for (GameWorlds.Dimension dimension : GameWorlds.Dimension.values()) {
@@ -643,7 +642,7 @@ public final class DialogMenu {
             Placeholder.unparsed("state", timer.state().name().toLowerCase(Locale.ROOT)),
             Placeholder.unparsed("mode", this.timers.mode().name()));
         DialogBase base = DialogBase.builder(this.text("title.timer"))
-            .body(List.of(this.icon(Material.CLOCK, body)))
+            .body(List.of(this.header(body)))
             .inputs(inputs)
             .canCloseWithEscape(true)
             .build();
@@ -701,7 +700,7 @@ public final class DialogMenu {
             this.slider("reset_after", this.text("input.reset-after"), -1, 600, 1, config.resetAfter())
         );
         DialogBase base = DialogBase.builder(this.text("title.goal"))
-            .body(List.of(this.icon(Material.DRAGON_EGG, this.text("body.goal", this.game.goalPlaceholder()))))
+            .body(List.of(this.header(this.text("body.goal", this.game.goalPlaceholder()))))
             .inputs(inputs)
             .canCloseWithEscape(true)
             .build();
@@ -732,7 +731,7 @@ public final class DialogMenu {
                 (response, audience) -> this.setGoal(player, new Goal(GoalType.ENTER_DIMENSION, dimension, 1))));
         }
         DialogBase base = DialogBase.builder(this.text("title.goal"))
-            .body(List.of(this.icon(Material.OBSIDIAN, this.text("body.dimension"))))
+            .body(List.of(this.header(this.text("body.dimension"))))
             .canCloseWithEscape(true)
             .build();
         ActionButton back = this.button(this.text("button.back"), null, (response, audience) -> this.openGoal(player));
@@ -766,24 +765,12 @@ public final class DialogMenu {
             Placeholder.unparsed("count", Integer.toString(results.size())),
             Placeholder.unparsed("total", Integer.toString(all.size())));
         DialogBase base = DialogBase.builder(this.text("title.search", Placeholder.component("type", this.text(SettingField.optionKey(type.name())))))
-            .body(List.of(this.icon(searchIcon(type), body)))
+            .body(List.of(this.header(body)))
             .inputs(List.of(this.textInput("query", this.text("input.search-" + type.name().toLowerCase(Locale.ROOT).replace('_', '-')), query, 64)))
             .canCloseWithEscape(true)
             .build();
         ActionButton back = this.button(this.text("button.back"), null, (response, audience) -> this.openGoal(player));
         this.show(player, base, DialogType.multiAction(buttons).columns(2).exitAction(back).build());
-    }
-
-    private static Material searchIcon(GoalType type) {
-        return switch (type) {
-            case KILL_ENTITY -> Material.IRON_SWORD;
-            case BREAK_BLOCK -> Material.DIAMOND_PICKAXE;
-            case OBTAIN_ITEM -> Material.DIAMOND;
-            case ADVANCEMENT -> Material.KNOWLEDGE_BOOK;
-            case FIND_BIOME -> Material.FILLED_MAP;
-            case FIND_STRUCTURE -> Material.RECOVERY_COMPASS;
-            default -> Material.COMPASS;
-        };
     }
 
     private void setGoal(Player player, Goal goal) {
@@ -842,7 +829,7 @@ public final class DialogMenu {
             this.openAutoReset(player);
         }));
         DialogBase base = DialogBase.builder(this.text("title.autoreset"))
-            .body(List.of(this.icon(Material.REPEATER, status)))
+            .body(List.of(this.header(status)))
             .inputs(inputs)
             .canCloseWithEscape(true)
             .build();
@@ -936,7 +923,7 @@ public final class DialogMenu {
             buttons.add(this.button(this.text("button.goal"), null, (response, audience) -> this.openGoal(player)));
         }
         DialogBase base = DialogBase.builder(this.text("title.manhunt"))
-            .body(List.of(this.icon(Material.COMPASS, this.text("body.manhunt", this.game.goalPlaceholder()))))
+            .body(List.of(this.header(this.text("body.manhunt", this.game.goalPlaceholder()))))
             .inputs(inputs)
             .canCloseWithEscape(true)
             .build();
@@ -981,14 +968,15 @@ public final class DialogMenu {
         boolean apply(DialogResponseView response);
     }
 
-    private void form(Player player, Material icon, String titleKey, Component body, List<DialogInput> inputs, String permission,
+    private void form(Player player, String titleKey, Component body, List<DialogInput> inputs, String permission,
                       String parent, Submit submit) {
-        this.form(player, icon, titleKey, body, inputs, permission, parent, this.text("button.save"), submit);
+        this.form(player, titleKey, body, inputs, permission, parent, this.text("button.save"), submit);
     }
 
-    private void form(Player player, Material icon, String titleKey, Component body, List<DialogInput> inputs, String permission,
+    private void form(Player player, String titleKey, Component body, List<DialogInput> inputs, String permission,
                       String parent, Component submitLabel, Submit submit) {
-        ActionButton save = this.button(submitLabel, null, (response, audience) -> {
+        // one column: the buttons are as wide as the inputs above them
+        ActionButton save = this.button(submitLabel, null, WIDE, (response, audience) -> {
             if (!player.hasPermission(permission)) {
                 this.messages().send(player, "menu.no-permission");
                 return;
@@ -999,19 +987,17 @@ public final class DialogMenu {
             }
         });
         DialogBase base = DialogBase.builder(this.text(titleKey))
-            .body(List.of(this.icon(icon, body)))
+            .body(List.of(this.header(body)))
             .inputs(inputs)
             .canCloseWithEscape(true)
             .build();
-        this.show(player, base, DialogType.multiAction(List.of(save)).exitAction(this.backButton(player, parent)).build());
+        ActionButton back = this.button(this.text("button.back"), null, WIDE, (response, audience) -> this.openParent(player, parent));
+        this.show(player, base, DialogType.multiAction(List.of(save)).exitAction(back).build());
     }
 
-    /** An item next to a text, used as the header of every screen. */
-    private DialogBody icon(Material material, Component description) {
-        return DialogBody.item(new ItemStack(material))
-            .description(DialogBody.plainMessage(description, WIDE + 60))
-            .showTooltip(false)
-            .build();
+    /** The centred text at the top of every screen, as wide as the inputs below it. */
+    private DialogBody header(Component description) {
+        return DialogBody.plainMessage(description, WIDE);
     }
 
     private void show(Player player, DialogBase base, DialogType type) {
@@ -1031,9 +1017,13 @@ public final class DialogMenu {
     }
 
     private ActionButton button(Component label, @Nullable Component tooltip, BiConsumer<DialogResponseView, Audience> action) {
+        return this.button(label, tooltip, 150, action);
+    }
+
+    private ActionButton button(Component label, @Nullable Component tooltip, int width, BiConsumer<DialogResponseView, Audience> action) {
         return ActionButton.builder(label)
             .tooltip(tooltip)
-            .width(150)
+            .width(width)
             .action(DialogAction.customClick((response, audience) -> {
                 if (!(audience instanceof Player player)) {
                     return;
