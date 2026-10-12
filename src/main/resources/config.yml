@@ -12,6 +12,8 @@ reset:
   # GOAL (goal reached / manhunt decided) or BOTH. auto-delay = seconds until then.
   auto: 'OFF'
   auto-delay: 10
+  # Reset lock: /mr reset (and /reset) asks for a random 5-digit code before the worlds are deleted.
+  confirm: false
   # What happens to every player when a new run starts.
   player:
     clear-inventory: true
@@ -91,4 +93,4 @@ sidebar:
   enabled: true
 
 # Do not change: used to update this file when MagicReset changes it.
-config-version: 3
+config-version: 4

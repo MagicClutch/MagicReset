@@ -73,6 +73,7 @@ public final class Settings {
         int preloadDelay,
         AutoResetOn auto,
         int autoDelay,
+        boolean confirm,
         PlayerReset player
     ) {
     }
@@ -186,6 +187,7 @@ public final class Settings {
             Math.max(0, config.getInt("reset.preload-delay", 15)),
             this.enumValue(AutoResetOn.class, config.getString("reset.auto"), AutoResetOn.OFF, "reset.auto"),
             Math.clamp(config.getInt("reset.auto-delay", 10), 0, 600),
+            config.getBoolean("reset.confirm", false),
             new PlayerReset(
                 config.getBoolean("reset.player.clear-inventory", true),
                 config.getBoolean("reset.player.clear-ender-chest", true),

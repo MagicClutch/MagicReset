@@ -110,7 +110,7 @@ Every setting is on exactly one screen:
 
 | Button | What is there |
 | --- | --- |
-| ⟳ Reset | Reset now, seed (empty = random), which worlds, countdowns, show seed, backups, auto reset (off / on death / on goal / both) |
+| ⟳ Reset | Reset now, seed (empty = random), which worlds, countdowns, show seed, backups, auto reset (off / on death / on goal / both), reset lock |
 | ⚑ Mode & Goal | Speedrun / Free play / Manhunt, the goal (with search) and the manhunt settings |
 | ⌚ Timer | Start / pause / reset, on/off, real or in-game time, when it starts, format |
 | ☠ Death settings | Hardcore / shared lives, stop the timer while dead |
@@ -119,8 +119,8 @@ Every setting is on exactly one screen:
 | Sidebar / Locator bar | On/off with one click |
 | ★ Leaderboard | Best times |
 
-Every button needs the same permission as the matching command. Players without admin permissions see the run
-status and the leaderboard. `/manhunt` (`/mm`) opens the manhunt settings directly.
+Every button needs the same permission as the matching command. The menu only opens for operators and players
+with a MagicReset admin permission; everybody else can still see the best times with `/mr leaderboard`. `/manhunt` (`/mm`) opens the manhunt settings directly.
 
 ## Configuration
 
@@ -138,6 +138,7 @@ Main command `/magicreset`, alias `/mr`. `/reset` is registered as a shortcut fo
 | Command | Description |
 | --- | --- |
 | `/mr reset [seed\|random\|same] [countdown] [limbo-countdown]` | Reset the worlds. |
+| `/mr reset confirm <code>` | With the reset lock (`reset.confirm`) `/mr reset` shows a random 5-digit code that has to be typed back within 30 s. |
 | `/mr cancel` | Cancel a running countdown. |
 | `/mr limbo [countdown]` | Pause the run in limbo, or continue it if it is paused. |
 | `/mr resume [countdown]` | Continue a paused run. |

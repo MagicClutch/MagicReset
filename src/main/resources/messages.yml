@@ -5,7 +5,7 @@
 # ======================================================================================
 
 # Raised when the menu texts change; an older file gets the new menu: texts (other texts are kept).
-version: 5
+version: 6
 
 prefix: '<gradient:#a855f7:#6366f1><bold>MagicReset</bold></gradient> <dark_gray>»</dark_gray> '
 
@@ -28,6 +28,9 @@ reset:
   nothing-selected: '<prefix><red>Choose at least one world to reset.'
   partial-started: '<prefix><gray>Regenerating <white><worlds></white>... the run goes on.'
   partial-done: '<prefix><green><worlds> is fresh again.'
+  confirm: '<prefix><yellow>Reset lock:</yellow> <gray>type</gray> <click:suggest_command:/<command> confirm <code>><white>/<command> confirm <code></white></click> <gray>within 30 seconds to delete the worlds.'
+  confirm-wrong: '<prefix><red>Wrong code. The reset was not started.'
+  confirm-expired: '<prefix><red>There is no reset to confirm (the code is only valid for 30 seconds).'
   countdown-started: '<prefix><gray>The world resets in <white><seconds></white> seconds. <dark_gray>(/magicreset cancel)'
 
 countdown:
@@ -307,6 +310,7 @@ menu:
     reset:
       auto: 'Auto reset'
       auto-delay: 'Auto reset after (s)'
+      confirm: 'Reset lock: /mr reset needs a code'
       player:
         clear-inventory: 'Clear inventory'
         clear-ender-chest: 'Clear ender chest'
@@ -369,6 +373,7 @@ menu:
   saved: '<prefix><green>✔ Saved.'
   error: '<prefix><red>Something went wrong in the menu - the details are in the server console.'
   no-permission: '<prefix><red>You are not allowed to change this.'
+  admins-only: '<prefix><red>The menu is only for operators.</red> <gray>/mr leaderboard shows the best times.'
   unknown-player: '<prefix><red><player> is not online.'
   invalid-number: '<prefix><red>"<value>" is not a valid number for <setting>.'
   invalid-rule: '<prefix><red>"<value>" is not rule=value, e.g. keep_inventory=true.'

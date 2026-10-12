@@ -75,6 +75,7 @@ public final class DialogMenu {
 
     private static final SettingField AUTO_RESET = SettingField.choice("reset.auto", AutoResetOn.values());
     private static final SettingField AUTO_RESET_DELAY = SettingField.number("reset.auto-delay", 0, 60, 1);
+    private static final SettingField RESET_CONFIRM = SettingField.bool("reset.confirm");
 
     /** A screen of plain settings. */
     private record Section(String id, String permission, String parent, List<SettingField> fields) {
@@ -168,7 +169,8 @@ public final class DialogMenu {
     /** The overview: one button per topic, every setting lives on exactly one of these screens. */
     private void openMain(Player player) {
         if (!this.isAdmin(player)) {
-            this.openInfoUnsafe(player);
+            // the menu is for OPs and players with a MagicReset permission only
+            this.messages().send(player, "menu.admins-only");
             return;
         }
         List<ActionButton> buttons = new ArrayList<>();
@@ -451,6 +453,7 @@ public final class DialogMenu {
         inputs.add(DialogInput.bool("backups", this.text("field.backups.enabled")).initial(this.settings().backups().enabled()).build());
         inputs.add(this.input(AUTO_RESET, this.plugin.getConfig()));
         inputs.add(this.input(AUTO_RESET_DELAY, this.plugin.getConfig()));
+        inputs.add(this.input(RESET_CONFIRM, this.plugin.getConfig()));
 
         List<ActionButton> buttons = List.of(
             this.button(this.text("button.reset-now"), null, (response, audience) -> {
@@ -498,6 +501,7 @@ public final class DialogMenu {
         values.put("backups.enabled", boolOf(response, "backups", this.settings().backups().enabled()));
         values.put(AUTO_RESET.path(), option(response, AUTO_RESET.inputName(), reset.auto().name()));
         values.put(AUTO_RESET_DELAY.path(), intOf(response, AUTO_RESET_DELAY.inputName(), reset.autoDelay()));
+        values.put(RESET_CONFIRM.path(), boolOf(response, RESET_CONFIRM.inputName(), reset.confirm()));
         this.plugin.setConfigValues(values);
     }
 

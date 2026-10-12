@@ -35,12 +35,14 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import net.kyori.adventure.text.Component;
@@ -55,6 +57,7 @@ import org.bukkit.World;
 import org.bukkit.advancement.Advancement;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.jspecify.annotations.Nullable;
 
 /**
  * {@code /magicreset} (alias {@code /mr}) and the optional {@code /reset} shortcut.
@@ -63,12 +66,19 @@ public final class MagicResetCommand {
 
     private static final String PERM = "magicreset.command.";
     private static final int MAX_COUNTDOWN = 3600;
+    private static final long CONFIRM_MILLIS = 30_000L;
+
+    /** A reset waiting for its confirmation code (reset.confirm). */
+    private record PendingReset(int code, @Nullable String seed, int countdown, int limboCountdown, long expires) {
+    }
 
     private final MagicReset plugin;
     private final GameManager game;
     private final TimerService timers;
     private final HudService hud;
     private final AutoResetScheduler autoReset;
+    /** Per sender name, so the console and every player have their own code. */
+    private final Map<String, PendingReset> pendingResets = new HashMap<>();
 
     public MagicResetCommand(MagicReset plugin, GameManager game, TimerService timers, HudService hud, AutoResetScheduler autoReset) {
         this.plugin = plugin;
@@ -147,6 +157,9 @@ public final class MagicResetCommand {
         return Commands.literal(name)
             .requires(permission("reset"))
             .executes(ctx -> this.reset(ctx, null, this.settings().reset().countdown(), this.settings().reset().limboCountdown()))
+            .then(Commands.literal("confirm")
+                .then(Commands.argument("code", IntegerArgumentType.integer())
+                    .executes(ctx -> this.confirmReset(ctx, IntegerArgumentType.getInteger(ctx, "code")))))
             .then(Commands.argument("seed", StringArgumentType.word())
                 .suggests(this.suggest(() -> Stream.of("random", "same", Long.toString(this.game.seed()))))
                 .executes(ctx -> this.reset(ctx, StringArgumentType.getString(ctx, "seed"),
@@ -159,7 +172,41 @@ public final class MagicResetCommand {
                             IntegerArgumentType.getInteger(ctx, "countdown"), IntegerArgumentType.getInteger(ctx, "limbo-countdown"))))));
     }
 
-    private int reset(CommandContext<CommandSourceStack> ctx, String seed, int countdown, int limboCountdown) {
+    private int reset(CommandContext<CommandSourceStack> ctx, @Nullable String seed, int countdown, int limboCountdown) {
+        if (this.settings().reset().confirm()) {
+            // reset lock: a random code has to be typed back, so a reset never happens by accident
+            int code = ThreadLocalRandom.current().nextInt(10_000, 100_000);
+            this.pendingResets.put(sender(ctx).getName(),
+                new PendingReset(code, seed, countdown, limboCountdown, System.currentTimeMillis() + CONFIRM_MILLIS));
+            this.messages().send(sender(ctx), "reset.confirm", Placeholder.unparsed("code", Integer.toString(code)),
+                Placeholder.unparsed("command", resetCommand(ctx)));
+            return Command.SINGLE_SUCCESS;
+        }
+        return this.doReset(ctx, seed, countdown, limboCountdown);
+    }
+
+    /** "mr reset" or "reset" - however the sender typed it, for the confirm hint. */
+    private static String resetCommand(CommandContext<CommandSourceStack> ctx) {
+        String label = ctx.getInput().stripLeading().replaceFirst("^/", "").split(" ")[0];
+        return label.equalsIgnoreCase("reset") ? label : label + " reset";
+    }
+
+    private int confirmReset(CommandContext<CommandSourceStack> ctx, int code) {
+        PendingReset pending = this.pendingResets.get(sender(ctx).getName());
+        if (pending == null || pending.expires() < System.currentTimeMillis()) {
+            this.pendingResets.remove(sender(ctx).getName());
+            this.messages().send(sender(ctx), "reset.confirm-expired");
+            return 0;
+        }
+        if (pending.code() != code) {
+            this.messages().send(sender(ctx), "reset.confirm-wrong");
+            return 0;
+        }
+        this.pendingResets.remove(sender(ctx).getName());
+        return this.doReset(ctx, pending.seed(), pending.countdown(), pending.limboCountdown());
+    }
+
+    private int doReset(CommandContext<CommandSourceStack> ctx, @Nullable String seed, int countdown, int limboCountdown) {
         String error = this.game.requestReset(seed, countdown, limboCountdown);
         if (error != null) {
             this.messages().send(sender(ctx), error);
