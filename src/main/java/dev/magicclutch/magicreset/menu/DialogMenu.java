@@ -293,7 +293,9 @@ public final class DialogMenu {
             .body(List.of(this.icon(Material.CLOCK, this.statusText(player))))
             .inputs(inputs)
             .canCloseWithEscape(true)
-            // switches change in place, nothing reloads until a button opens another screen
+            // switches change in place, nothing reloads until a button opens another screen;
+            // a dialog that stays open must not pause the game (Paper rejects it)
+            .pause(false)
             .afterAction(DialogBase.DialogAfterAction.NONE)
             .build();
         ActionButton saveAndClose = this.mainButton(player, mode, this.text("button.save-close"), player::closeDialog);
