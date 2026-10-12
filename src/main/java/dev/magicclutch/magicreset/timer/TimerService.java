@@ -243,16 +243,6 @@ public final class TimerService {
         this.individual.values().forEach(RunTimer::pause);
     }
 
-    /** Resumes paused timers; {@code false} if nothing was paused (then the caller may start them). */
-    public boolean resumeIfPaused() {
-        boolean anyPaused = this.global.state() == RunTimer.State.PAUSED
-            || this.individual.values().stream().anyMatch(timer -> timer.state() == RunTimer.State.PAUSED);
-        if (anyPaused) {
-            this.resumeAll();
-        }
-        return anyPaused;
-    }
-
     public void resumeAll() {
         this.paused = false;
         this.globalAutoPaused = false;
