@@ -54,7 +54,7 @@ a sidebar and a locator bar switch.
 
 ## Modes
 
-The menu (**⚑ Game**) switches between three modes with one click:
+The **Mode** button in the menu switches between three modes with one click:
 
 - **Speedrun** – timer on and a goal to reach.
 - **Free play** – no timer, no goal, no death rules: just play and reset the worlds whenever you like.
@@ -109,9 +109,16 @@ search/creation and the obsidian platform work like in vanilla).
 ## Menu
 
 `/magicreset` (or `/mr`) without arguments opens an in-game menu built with the server-side dialog screens
-(Minecraft 1.21.6+, no client mod needed). Admins can change reset, timer, goal, worlds/seed/backups, death rules
-and manhunt settings there; every section needs the same permission as the matching command. Players without
-admin permissions see an info view with the run status and the leaderboard.
+(Minecraft 1.21.6+, no client mod needed). The first page has the things you need all the time, each with one click:
+
+- **⟳ Reset** – asks "Reset now?"; *Options…* picks the worlds, the seed and the countdowns.
+- **Mode** – click to switch Speedrun → Free play → Manhunt.
+- **⚑ Goal** (not in free play) and **⚔ Targets** (manhunt only).
+- **⌚ Timer: On/Off** with Pause/Resume, **▤ Sidebar: On/Off** and **★ Leaderboard**.
+- **⚙ More settings** – every other setting, sorted by topic.
+
+Every button needs the same permission as the matching command. Players without admin permissions see an info
+view with the run status and the leaderboard.
 
 Every setting of `config.yml` can be changed in the menu: switches, sliders and choices, and text fields that
 name an example of what to type. The goal is chosen with buttons; mobs, blocks, items and advancements are
