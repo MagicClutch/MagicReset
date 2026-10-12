@@ -444,7 +444,9 @@ public final class MagicResetCommand {
                 .then(Commands.literal("overworld").executes(ctx -> this.setGoal(ctx, new Goal(GoalType.ENTER_DIMENSION, GoalService.OVERWORLD, 1)))))
             .then(this.targetGoal("advancement", GoalType.ADVANCEMENT, advancements))
             .then(this.targetGoal("break", GoalType.BREAK_BLOCK, blocks))
-            .then(this.targetGoal("item", GoalType.OBTAIN_ITEM, items));
+            .then(this.targetGoal("item", GoalType.OBTAIN_ITEM, items))
+            .then(this.targetGoal("biome", GoalType.FIND_BIOME, this.suggest(() -> Registry.BIOME.keyStream().map(NamespacedKey::asString))))
+            .then(this.targetGoal("structure", GoalType.FIND_STRUCTURE, this.suggest(() -> Registry.STRUCTURE.keyStream().map(NamespacedKey::asString))));
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> targetGoal(String name, GoalType type, SuggestionProvider<CommandSourceStack> suggestions) {

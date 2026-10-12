@@ -79,6 +79,7 @@ public final class Settings {
     }
 
     public record Timer(
+        boolean enabled,
         TimerMode mode,
         TimerScope scope,
         StartTrigger start,
@@ -109,7 +110,7 @@ public final class Settings {
     public record Manhunt(boolean enabled, int targetLives, int headStart, boolean hunterCompass, int resetAfter) {
     }
 
-    public record Scoreboard(boolean enabledByDefault, int updateInterval) {
+    public record Scoreboard(boolean enabled, boolean enabledByDefault, int updateInterval) {
     }
 
 
@@ -208,6 +209,7 @@ public final class Settings {
         );
 
         this.timer = new Timer(
+            config.getBoolean("timer.enabled", true),
             this.enumValue(TimerMode.class, config.getString("timer.mode"), TimerMode.RTA, "timer.mode"),
             this.enumValue(TimerScope.class, config.getString("timer.scope"), TimerScope.GLOBAL, "timer.scope"),
             this.enumValue(StartTrigger.class, config.getString("timer.start"), StartTrigger.AUTO, "timer.start"),
@@ -250,6 +252,7 @@ public final class Settings {
             config.getInt("manhunt.reset-after", -1)
         );
         this.scoreboard = new Scoreboard(
+            config.getBoolean("scoreboard.enabled", true),
             config.getBoolean("scoreboard.enabled-by-default", true),
             Math.clamp(config.getInt("scoreboard.update-interval", 10), 1, 100)
         );

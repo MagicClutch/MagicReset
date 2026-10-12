@@ -1,5 +1,6 @@
 package dev.magicclutch.magicreset.menu;
 
+import dev.magicclutch.magicreset.goal.GoalService;
 import dev.magicclutch.magicreset.goal.GoalType;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -12,6 +13,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
 import org.bukkit.advancement.Advancement;
+import org.bukkit.block.Biome;
 import org.bukkit.entity.EntityType;
 
 /**
@@ -38,6 +40,13 @@ final class GoalTargets {
         "end/kill_dragon", "end/elytra", "nether/obtain_ancient_debris", "adventure/kill_a_mob",
         "adventure/sleep_in_bed", "husbandry/balanced_diet", "adventure/adventuring_time", "nether/all_effects");
 
+    private static final List<String> POPULAR_BIOMES = List.of(
+        "mushroom_fields", "badlands", "ice_spikes", "cherry_grove", "jungle", "deep_dark", "pale_garden",
+        "warped_forest", "crimson_forest", "soul_sand_valley", "basalt_deltas", "end_highlands");
+    private static final List<String> POPULAR_STRUCTURES = List.of(
+        "village_plains", "stronghold", "fortress", "bastion_remnant", "end_city", "ancient_city",
+        "woodland_mansion", "monument", "trial_chambers", "desert_pyramid", "ruined_portal", "trail_ruins");
+
     private GoalTargets() {
     }
 
@@ -48,6 +57,8 @@ final class GoalTargets {
             case KILL_ENTITY -> Registry.ENTITY_TYPE.stream().filter(EntityType::isAlive).forEach(entity -> keys.add(entity.getKey()));
             case BREAK_BLOCK -> Registry.MATERIAL.stream().filter(material -> material.isBlock() && !material.isAir()).forEach(m -> keys.add(m.getKey()));
             case OBTAIN_ITEM -> Registry.MATERIAL.stream().filter(material -> material.isItem() && !material.isAir()).forEach(m -> keys.add(m.getKey()));
+            case FIND_BIOME -> Registry.BIOME.keyStream().forEach(keys::add);
+            case FIND_STRUCTURE -> Registry.STRUCTURE.keyStream().forEach(keys::add);
             case ADVANCEMENT -> {
                 Iterator<Advancement> iterator = Bukkit.advancementIterator();
                 while (iterator.hasNext()) {
@@ -70,6 +81,8 @@ final class GoalTargets {
             case BREAK_BLOCK -> POPULAR_BLOCKS;
             case OBTAIN_ITEM -> POPULAR_ITEMS;
             case ADVANCEMENT -> POPULAR_ADVANCEMENTS;
+            case FIND_BIOME -> POPULAR_BIOMES;
+            case FIND_STRUCTURE -> POPULAR_STRUCTURES;
             default -> List.of();
         };
         List<NamespacedKey> available = all(type);
@@ -144,6 +157,11 @@ final class GoalTargets {
                 Advancement advancement = Bukkit.getAdvancement(key);
                 yield advancement == null || advancement.getDisplay() == null ? Component.text(key.getKey()) : advancement.getDisplay().title();
             }
+            case FIND_BIOME -> {
+                Biome biome = Registry.BIOME.get(key);
+                yield biome == null ? Component.text(key.getKey()) : Component.translatable(biome.translationKey());
+            }
+            case FIND_STRUCTURE -> Component.text(GoalService.readable(key));
             default -> Component.text(key.asString());
         };
     }

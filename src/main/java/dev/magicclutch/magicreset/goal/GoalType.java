@@ -13,7 +13,11 @@ public enum GoalType {
     /** Break a block type. */
     BREAK_BLOCK(true, true),
     /** Have an item in the inventory. */
-    OBTAIN_ITEM(true, true);
+    OBTAIN_ITEM(true, true),
+    /** Be the first to stand in a biome, e.g. minecraft:mushroom_fields. */
+    FIND_BIOME(true, false),
+    /** Be the first to stand inside a structure, e.g. minecraft:stronghold. */
+    FIND_STRUCTURE(true, false);
 
     private final boolean needsTarget;
     private final boolean supportsAmount;

@@ -107,6 +107,9 @@ limbo:
   game-mode: ADVENTURE
 
 timer:
+  # false = no timer at all: nothing in the action bar or sidebar, no times on the leaderboard.
+  # Good for just playing without speedrunning.
+  enabled: true
   # RTA = real time (wall clock, keeps running even when nobody is online)
   # IGT = in-game play time (counts server ticks while players are in the game)
   mode: RTA
@@ -142,13 +145,14 @@ timer:
   update-interval: 1
 
 goal:
-  # NONE, BEAT_GAME, KILL_ENTITY, ENTER_DIMENSION, ADVANCEMENT, BREAK_BLOCK or OBTAIN_ITEM
+  # NONE, BEAT_GAME, KILL_ENTITY, ENTER_DIMENSION, ADVANCEMENT, BREAK_BLOCK, OBTAIN_ITEM, FIND_BIOME or FIND_STRUCTURE
   # BEAT_GAME = "Beat Minecraft": leave the end through the exit portal after killing the dragon (no target)
   type: KILL_ENTITY
   # KILL_ENTITY: an entity (minecraft:ender_dragon, minecraft:wither, ...)
   # ENTER_DIMENSION: minecraft:the_nether, minecraft:the_end or minecraft:overworld
   # ADVANCEMENT: an advancement (minecraft:story/enter_the_end, ...)
   # BREAK_BLOCK / OBTAIN_ITEM: a block / item (minecraft:diamond_ore, minecraft:diamond, ...)
+  # FIND_BIOME / FIND_STRUCTURE: a biome / structure (minecraft:mushroom_fields, minecraft:stronghold, ...)
   target: minecraft:ender_dragon
   # How often (KILL_ENTITY, BREAK_BLOCK) or how many (OBTAIN_ITEM).
   amount: 1
@@ -173,6 +177,8 @@ auto-reset:
   warnings: [3600, 1800, 600, 300, 60, 30, 10, 5, 4, 3, 2, 1]
 
 scoreboard:
+  # false = no sidebar for anybody.
+  enabled: true
   # Show the sidebar to players who did not toggle it with /magicreset scoreboard.
   # The sidebar uses its own scoreboard, so teams/objectives of the main scoreboard are
   # not visible to players who have it enabled.

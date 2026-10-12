@@ -74,7 +74,7 @@ public final class MagicReset extends JavaPlugin {
 
         PluginManager plugins = this.getServer().getPluginManager();
         plugins.registerEvents(new GameListener(this, this.game, this.worlds, this.timers, () -> this.settings.limbo().platformHeight()), this);
-        plugins.registerEvents(new PortalListener(this, this.worlds, this.game::spawn), this);
+        plugins.registerEvents(new PortalListener(this, this.worlds, this.game::spawn, this.game::seed), this);
         plugins.registerEvents(this.goals, this);
         plugins.registerEvents(this.hud, this);
         plugins.registerEvents(this.manhunt, this);

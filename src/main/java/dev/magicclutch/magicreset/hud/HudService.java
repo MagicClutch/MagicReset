@@ -100,10 +100,12 @@ public final class HudService implements Listener {
                     inGame.add(player);
                 }
             }
-            this.timers.updatePresence(inGame);
-            this.timers.tick(inGame);
+            if (this.settings().timer().enabled()) {
+                this.timers.updatePresence(inGame);
+                this.timers.tick(inGame);
+            }
             if (this.tick % 10 == 0) {
-                this.goals.pollInventories();
+                this.goals.poll();
             }
         }
 
@@ -142,6 +144,9 @@ public final class HudService implements Listener {
     }
 
     private @Nullable Component timerLine(Player player) {
+        if (!this.settings().timer().enabled()) {
+            return null;
+        }
         RunTimer timer = this.timers.displayed(player);
         TagResolver placeholders = this.timePlaceholders(player);
         if (this.game.outcome() == GameManager.Outcome.FAILED) {
@@ -163,7 +168,7 @@ public final class HudService implements Listener {
     public TagResolver timePlaceholders(Player player) {
         RunTimer timer = this.timers.displayed(player);
         Settings.Timer config = this.settings().timer();
-        String time = config.display(timer.millis(this.timers.mode()));
+        String time = config.enabled() ? config.display(timer.millis(this.timers.mode())) : "-";
         return TagResolver.resolver(
             Placeholder.unparsed("time", time),
             Placeholder.unparsed("mode", this.timers.mode().name())
@@ -176,6 +181,9 @@ public final class HudService implements Listener {
     // ---------------------------------------------------------------------------------------------------------
 
     public boolean sidebarVisible(Player player) {
+        if (!this.settings().scoreboard().enabled()) {
+            return false;
+        }
         boolean byDefault = this.settings().scoreboard().enabledByDefault();
         return this.sidebarToggled.contains(player.getUniqueId()) != byDefault;
     }
@@ -196,6 +204,7 @@ public final class HudService implements Listener {
 
     private void updateSidebar(Player player) {
         if (!this.sidebarVisible(player)) {
+            this.removeSidebar(player); // also when the sidebar was switched off for everybody
             return;
         }
         Scoreboard board = this.sidebars.computeIfAbsent(player.getUniqueId(), ignored -> Bukkit.getScoreboardManager().getNewScoreboard());

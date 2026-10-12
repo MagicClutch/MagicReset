@@ -25,9 +25,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -120,6 +122,8 @@ public final class GameManager {
     private @Nullable ConfigurationSection loadedExtra;
     /** The last reset failed half way; the old run cannot be continued. */
     private boolean resetFailed;
+    /** Dimensions the running reset deletes; all of them unless chosen in the menu. */
+    private Set<GameWorlds.Dimension> resetSelection = EnumSet.allOf(GameWorlds.Dimension.class);
     private final Preloader preloader;
     /** Old worlds of an instant (preloaded) reset are still being backed up and deleted. */
     private boolean cleaningUp;
@@ -217,6 +221,7 @@ public final class GameManager {
             this.showBossBar(this.messages().get("bossbar.paused"), 1f, BossBar.Color.YELLOW);
         }
         this.plugin.getLogger().info("Loaded run #" + this.run + " (seed " + this.seed + ")");
+        this.logGameWorlds();
         return true;
     }
 
@@ -247,9 +252,39 @@ public final class GameManager {
      * @return message key describing why the reset could not start, or {@code null} on success
      */
     public @Nullable String requestReset(@Nullable String seedInput, int countdown, int limboCountdown) {
+        return this.requestReset(seedInput, countdown, limboCountdown, EnumSet.allOf(GameWorlds.Dimension.class));
+    }
+
+    /**
+     * Resets only some dimensions. With the overworld this is a normal new run that keeps the dimensions that
+     * were not chosen; without it the run continues and only the chosen nether/end are regenerated.
+     */
+    public @Nullable String requestReset(@Nullable String seedInput, int countdown, int limboCountdown, Set<GameWorlds.Dimension> selection) {
         if (this.phase == Phase.RESETTING || this.cleaningUp) {
             return "reset.already-resetting";
         }
+        if (selection.isEmpty()) {
+            return "reset.nothing-selected";
+        }
+        if (!selection.contains(GameWorlds.Dimension.OVERWORLD)) {
+            if (this.phase != Phase.RUNNING && this.phase != Phase.COUNTDOWN) {
+                return "pause.not-running";
+            }
+            Long partialSeed = this.resolveSeed(seedInput);
+            Set<GameWorlds.Dimension> chosen = EnumSet.copyOf(selection);
+            if (countdown <= 0) {
+                this.regenerate(chosen, partialSeed);
+            } else {
+                this.startCountdown(CountdownKind.RESET, countdown,
+                    remaining -> this.countdownTick("countdown.reset", remaining),
+                    () -> {
+                        this.phase = this.phaseBeforeCountdown;
+                        this.regenerate(chosen, partialSeed);
+                    });
+            }
+            return null;
+        }
+        this.resetSelection = EnumSet.copyOf(selection);
         if (this.phase == Phase.COUNTDOWN || this.phase == Phase.RESUMING) {
             this.cancelCountdown(false);
         }
@@ -287,7 +322,8 @@ public final class GameManager {
     private void executeReset(@Nullable Long requestedSeed, int limboCountdown) {
         this.cancelCountdown(false);
         // a preloaded overworld lets everybody go straight into the new run without the limbo
-        Preloader.Ready ready = this.phase == Phase.RESETTING || this.worlds.overworld() == null ? null : this.preloader.take(requestedSeed);
+        boolean everything = this.resetSelection.containsAll(EnumSet.allOf(GameWorlds.Dimension.class));
+        Preloader.Ready ready = !everything || this.phase == Phase.RESETTING || this.worlds.overworld() == null ? null : this.preloader.take(requestedSeed);
         long newSeed = ready != null ? ready.seed() : requestedSeed != null ? requestedSeed : this.nextSeed();
         this.phase = Phase.RESETTING;
         this.outcome = Outcome.NONE;
@@ -297,7 +333,13 @@ public final class GameManager {
         this.snapshots.clear();
         this.saveAsync();
 
-        this.messages().send(Bukkit.getServer(), "reset.started", Placeholder.unparsed("worlds", this.resetWorldList()));
+        List<String> deleting = new ArrayList<>();
+        for (GameWorlds.Dimension dimension : GameWorlds.Dimension.values()) {
+            if (this.worlds.isEnabled(dimension) && this.resetSelection.contains(dimension)) {
+                deleting.add(this.worlds.key(dimension).asString());
+            }
+        }
+        this.messages().send(Bukkit.getServer(), "reset.started", Placeholder.unparsed("worlds", String.join(", ", deleting)));
         if (ready != null) {
             this.instantReset(ready);
             return;
@@ -325,8 +367,8 @@ public final class GameManager {
         boolean unloaded = true;
         try {
             for (GameWorlds.Dimension dimension : GameWorlds.Dimension.values()) {
-                if (!this.worlds.isEnabled(dimension)) {
-                    continue; // only the selected worlds are deleted (/magicreset worlds)
+                if (!this.worlds.isEnabled(dimension) || !this.resetSelection.contains(dimension)) {
+                    continue; // only the worlds that are part of the game and chosen for this reset
                 }
                 World world = this.worlds.world(dimension);
                 // the path of a loaded world comes straight from the server, the fallback is derived from the layout
@@ -501,6 +543,7 @@ public final class GameManager {
                         this.worlds.loadOrCreate(GameWorlds.Dimension.END, this.seed);
                     }
                     this.cleaningUp = false;
+                    this.logGameWorlds();
                     this.saveAsync();
                 });
             });
@@ -544,7 +587,7 @@ public final class GameManager {
             return;
         }
         GameWorlds.Dimension dimension = dimensions[index];
-        if (this.worlds.isEnabled(dimension)) {
+        if (this.worlds.isEnabled(dimension) && this.resetSelection.contains(dimension)) {
             this.showBossBar(this.messages().get("bossbar.generating",
                 Placeholder.component("dimension", this.messages().get("dimension." + dimension.path().replace('_', '-')))),
                 0.25f + 0.5f * index / dimensions.length, BossBar.Color.BLUE);
@@ -589,6 +632,7 @@ public final class GameManager {
         this.awaitingRelease = true;
         this.saveAsync();
         this.plugin.getLogger().info("Run #" + this.run + " is ready (seed " + newSeed + ")");
+        this.logGameWorlds();
 
         this.showBossBar(this.messages().get("bossbar.ready"), 1f, BossBar.Color.GREEN);
         this.messages().send(Bukkit.getServer(), this.settings().showSeed() ? "reset.ready" : "reset.ready-no-seed", this.seedPlaceholder());
@@ -601,7 +645,66 @@ public final class GameManager {
             this::startRun);
     }
 
+    /**
+     * Regenerates only the nether and/or end while the run goes on. Players inside are moved to the spawn,
+     * the old files are backed up like on a normal reset.
+     */
+    private void regenerate(Set<GameWorlds.Dimension> dimensions, @Nullable Long requestedSeed) {
+        long dimensionSeed = requestedSeed != null ? requestedSeed : this.seed;
+        Location target = this.spawn();
+        Map<GameWorlds.Dimension, Path> folders = new EnumMap<>(GameWorlds.Dimension.class);
+        for (GameWorlds.Dimension dimension : dimensions) {
+            if (!this.worlds.isEnabled(dimension)) {
+                continue;
+            }
+            World world = this.worlds.world(dimension);
+            if (world != null && target != null) {
+                world.getPlayers().forEach(player -> player.teleport(target));
+            }
+            folders.put(dimension, world != null ? world.getWorldPath() : this.worlds.folder(dimension));
+            if (!this.worlds.unload(dimension)) {
+                this.messages().send(Bukkit.getServer(), "reset.failed", Placeholder.unparsed("reason", "could not unload " + this.worlds.key(dimension)));
+                return;
+            }
+        }
+        if (folders.isEmpty()) {
+            return;
+        }
+        this.cleaningUp = true;
+        List<String> names = folders.keySet().stream().map(dimension -> this.worlds.key(dimension).asString()).toList();
+        this.messages().send(Bukkit.getServer(), "reset.partial-started", Placeholder.unparsed("worlds", String.join(", ", names)));
+        Path backupRoot = this.settings().backups().enabled() ? this.backupRoot() : null;
+        Path backup = newBackupFolder(backupRoot, this.run);
+        String backupInfo = "run: " + this.run + "\nseed: " + this.seed + "\nworlds: " + String.join(", ", names) + "\n";
+        Bukkit.getScheduler().runTaskLater(this.plugin, () -> CompletableFuture.runAsync(() -> {
+            for (Map.Entry<GameWorlds.Dimension, Path> entry : folders.entrySet()) {
+                Path folderBackup = backup == null ? null : backup.resolve(this.worlds.key(entry.getKey()).asString().replace(':', '_'));
+                this.wipeWithRetry(entry.getKey(), entry.getValue(), folderBackup);
+            }
+            if (backup != null && Files.isDirectory(backup)) {
+                try {
+                    Files.writeString(backup.resolve("info.yml"), backupInfo, StandardCharsets.UTF_8);
+                    WorldFiles.prune(backupRoot, this.settings().backups().keep());
+                } catch (IOException e) {
+                    this.plugin.getLogger().warning("Could not finish the backup " + backup + ": " + e.getMessage());
+                }
+            }
+        }, this.io).whenComplete((ignored, error) -> Bukkit.getScheduler().runTask(this.plugin, () -> {
+            if (error != null) {
+                this.plugin.getLogger().log(Level.SEVERE, "Failed to delete " + names, error);
+            }
+            for (GameWorlds.Dimension dimension : folders.keySet()) {
+                this.worlds.loadOrCreate(dimension, dimensionSeed);
+            }
+            this.cleaningUp = false;
+            this.logGameWorlds();
+            this.messages().send(Bukkit.getServer(), "reset.partial-done", Placeholder.unparsed("worlds", String.join(", ", names)));
+            this.saveAsync();
+        })), 10L);
+    }
+
     private void startRun() {
+        this.resetSelection = EnumSet.allOf(GameWorlds.Dimension.class);
         this.phase = Phase.RUNNING;
         this.runStartedNanos = System.nanoTime();
         this.awaitingRelease = false;
@@ -614,7 +717,9 @@ public final class GameManager {
         for (Player player : Bukkit.getOnlinePlayers()) {
             this.placeIntoRun(player);
             participantsNow.add(player);
-            player.showTitle(Title.title(this.messages().get("title.go"), this.messages().get("title.go-subtitle", this.goalPlaceholder()), COUNTDOWN_TIMES));
+            // without a goal (free play) there is nothing to announce below "GO!"
+            Component subtitle = this.goals.goal().isNone() ? Component.empty() : this.messages().get("title.go-subtitle", this.goalPlaceholder());
+            player.showTitle(Title.title(this.messages().get("title.go"), subtitle, COUNTDOWN_TIMES));
             player.playSound(GO_SOUND);
         }
         this.timers.begin(participantsNow);
@@ -980,6 +1085,9 @@ public final class GameManager {
 
     /** Puts a completion time on the leaderboard of the current goal and announces records. */
     private void recordTime(Player player, long millis) {
+        if (!this.settings().timer().enabled()) {
+            return; // nothing to rank without a timer
+        }
         String category = Leaderboard.category(this.goals.goal(), this.timers.mode(), this.plugin.manhunt().isEnabled());
         int rank = this.plugin.leaderboard().record(category,
             new Leaderboard.Entry(player.getUniqueId(), player.getName(), millis, System.currentTimeMillis(), this.seed));
@@ -1179,6 +1287,22 @@ public final class GameManager {
         }
     }
 
+    /** One console line per game dimension, so a missing world is easy to spot. */
+    private void logGameWorlds() {
+        for (GameWorlds.Dimension dimension : GameWorlds.Dimension.values()) {
+            if (!this.worlds.isEnabled(dimension)) {
+                continue;
+            }
+            boolean loaded = this.worlds.world(dimension) != null;
+            String line = "Game " + dimension.path() + ": " + this.worlds.key(dimension) + (loaded ? " (loaded)" : " (NOT LOADED)");
+            if (loaded) {
+                this.plugin.getLogger().info(line);
+            } else {
+                this.plugin.getLogger().warning(line);
+            }
+        }
+    }
+
     /** "magicreset:overworld, minecraft:the_nether, minecraft:the_end" – the worlds a reset deletes. */
     public String resetWorldList() {
         List<String> keys = new ArrayList<>();
@@ -1191,7 +1315,8 @@ public final class GameManager {
     }
 
     public String formatPrecise(long millis) {
-        return TimeFormat.format(millis, 3, this.settings().timer().style());
+        // without a timer there is no time to show in titles and messages
+        return this.settings().timer().enabled() ? TimeFormat.format(millis, 3, this.settings().timer().style()) : "-";
     }
 
     /** The seed, or "hidden" when seed.show is off. */

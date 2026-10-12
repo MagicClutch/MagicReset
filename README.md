@@ -52,6 +52,18 @@ a sidebar and a locator bar switch.
 - The end shows a big title with the winner and the time; `/mm resetafter <seconds>` resets automatically.
 - Manhunt times have their own leaderboard.
 
+## Modes
+
+The menu (**⚑ Game**) switches between three modes with one click:
+
+- **Speedrun** – timer on and a goal to reach.
+- **Free play** – no timer, no goal, no death rules: just play and reset the worlds whenever you like.
+- **Manhunt** – targets run, hunters chase them (see below).
+
+The timer can also be switched off on its own (`timer.enabled`), and the sidebar for everybody (`scoreboard.enabled`).
+A reset can delete only some worlds: without the overworld the run goes on and only the nether/end are regenerated.
+Goals also include finding a biome or a structure first.
+
 ## Requirements
 
 - Paper (or a Paper fork) **26.2**

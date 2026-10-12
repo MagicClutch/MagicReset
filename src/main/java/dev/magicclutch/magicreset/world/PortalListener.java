@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -47,12 +48,30 @@ public final class PortalListener implements Listener {
     private final Plugin plugin;
     private final GameWorlds worlds;
     private final Supplier<@Nullable Location> spawn;
+    private final LongSupplier seed;
     private final Set<UUID> pendingEndTravel = new HashSet<>();
 
-    public PortalListener(Plugin plugin, GameWorlds worlds, Supplier<@Nullable Location> spawn) {
+    public PortalListener(Plugin plugin, GameWorlds worlds, Supplier<@Nullable Location> spawn, LongSupplier seed) {
         this.plugin = plugin;
         this.worlds = worlds;
         this.spawn = spawn;
+        this.seed = seed;
+    }
+
+    /**
+     * The target dimension of a portal, loading or generating it if it is missing (e.g. it failed to load, or
+     * the server's own nether/end is disabled). Must not run inside an entity tick.
+     */
+    private @Nullable World targetWorld(GameWorlds.Dimension dimension) {
+        if (!this.worlds.isEnabled(dimension)) {
+            return null;
+        }
+        World world = this.worlds.world(dimension);
+        if (world == null) {
+            this.plugin.getLogger().warning("The " + this.worlds.key(dimension) + " world was not loaded, loading it for a portal");
+            world = this.worlds.loadOrCreate(dimension, this.seed.getAsLong());
+        }
+        return world;
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -68,6 +87,10 @@ public final class PortalListener implements Listener {
         World target = this.worlds.isEnabled(to) ? this.worlds.world(to) : null;
         if (target == null) {
             event.setCancelled(true);
+            if (this.worlds.isEnabled(to)) {
+                // worlds cannot be created during the entity tick: load it now, the next portal attempt works
+                Bukkit.getScheduler().runTask(this.plugin, () -> this.targetWorld(to));
+            }
             return;
         }
         event.setTargetWorld(target);
@@ -104,7 +127,7 @@ public final class PortalListener implements Listener {
     }
 
     private CompletableFuture<?> enterEnd(Entity entity) {
-        World end = this.worlds.isEnabled(GameWorlds.Dimension.END) ? this.worlds.world(GameWorlds.Dimension.END) : null;
+        World end = this.targetWorld(GameWorlds.Dimension.END);
         if (end == null) {
             return CompletableFuture.completedFuture(null);
         }

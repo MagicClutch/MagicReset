@@ -20,6 +20,7 @@ import dev.magicclutch.magicreset.timer.TimerScope;
 import dev.magicclutch.magicreset.timer.TimerService;
 import dev.magicclutch.magicreset.util.Durations;
 import dev.magicclutch.magicreset.util.TimeFormat;
+import dev.magicclutch.magicreset.world.GameWorlds;
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.dialog.DialogResponseView;
 import io.papermc.paper.registry.data.dialog.ActionButton;
@@ -32,10 +33,12 @@ import io.papermc.paper.registry.data.dialog.type.DialogType;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import net.kyori.adventure.audience.Audience;
@@ -70,7 +73,7 @@ public final class DialogMenu {
     private static final List<String> WORLD_TYPES = List.of("NORMAL", "FLAT", "LARGE_BIOMES", "AMPLIFIED");
 
     /** A screen of plain settings. */
-    private record Section(String id, Material icon, String permission, List<SettingField> fields) {
+    private record Section(String id, Material icon, String permission, String parent, List<SettingField> fields) {
     }
 
     private final MagicReset plugin;
@@ -103,7 +106,8 @@ public final class DialogMenu {
 
     private List<Section> sections() {
         return List.of(
-            new Section("timer", Material.CLOCK, PERM + "timer", List.of(
+            new Section("timer", Material.CLOCK, PERM + "timer", "main", List.of(
+                SettingField.bool("timer.enabled"),
                 SettingField.choice("timer.mode", TimerMode.values()),
                 SettingField.choice("timer.scope", TimerScope.values()),
                 SettingField.choice("timer.start", StartTrigger.values()),
@@ -115,15 +119,14 @@ public final class DialogMenu {
                 SettingField.bool("timer.action-bar"),
                 SettingField.bool("timer.show-when-idle"),
                 SettingField.number("timer.update-interval", 1, 20, 1))),
-            new Section("deaths", Material.TOTEM_OF_UNDYING, PERM + "deaths", List.of(
+            new Section("deaths", Material.TOTEM_OF_UNDYING, PERM + "deaths", "game", List.of(
                 SettingField.choice("deaths.mode", DeathMode.values()),
                 SettingField.number("deaths.shared-lives", 1, 50, 1),
                 SettingField.bool("deaths.spectator-on-fail"),
                 SettingField.number("deaths.reset-after", -1, 600, 1))),
-            new Section("worlds", Material.GRASS_BLOCK, PERM + "worlds", List.of(
+            new Section("worlds", Material.GRASS_BLOCK, PERM + "worlds", "reset", List.of(
                 SettingField.bool("worlds.nether"),
                 SettingField.bool("worlds.end"),
-                SettingField.bool("worlds.locator-bar"),
                 SettingField.choice("worlds.type", WORLD_TYPES),
                 SettingField.choice("worlds.difficulty", Difficulty.values()),
                 SettingField.bool("worlds.generate-structures"),
@@ -132,11 +135,11 @@ public final class DialogMenu {
                 SettingField.text("worlds.world-border", 9, DialogMenu::validateNonNegativeNumber),
                 SettingField.map("worlds.game-rules"),
                 SettingField.bool("worlds.use-main-nether-end"))),
-            new Section("seed", Material.WHEAT_SEEDS, PERM + "seed", List.of(
+            new Section("seed", Material.WHEAT_SEEDS, PERM + "seed", "reset", List.of(
                 SettingField.choice("seed.mode", SeedMode.values()),
                 SettingField.text("seed.fixed", 64, null),
                 SettingField.bool("seed.show"))),
-            new Section("reset", Material.TNT, PERM + "reset", List.of(
+            new Section("reset", Material.REPEATER, PERM + "reset", "reset", List.of(
                 SettingField.number("reset.countdown", 0, 120, 1),
                 SettingField.number("reset.limbo-countdown", 0, 120, 1),
                 SettingField.bool("reset.preload"),
@@ -145,7 +148,7 @@ public final class DialogMenu {
                 SettingField.bool("reset.shortcut-command"),
                 SettingField.number("spawn.safe-search-radius", 0, 512, 16),
                 SettingField.number("spawn.preload-radius", 0, 12, 1))),
-            new Section("players", Material.LEATHER_CHESTPLATE, PERM + "reset", List.of(
+            new Section("players", Material.LEATHER_CHESTPLATE, PERM + "reset", "reset", List.of(
                 SettingField.bool("reset.player.clear-inventory"),
                 SettingField.bool("reset.player.clear-ender-chest"),
                 SettingField.bool("reset.player.reset-health"),
@@ -156,19 +159,25 @@ public final class DialogMenu {
                 SettingField.bool("reset.player.revoke-recipes"),
                 SettingField.bool("reset.player.reset-respawn-point"),
                 SettingField.choice("reset.player.game-mode", GameMode.values()))),
-            new Section("limbo", Material.ENDER_PEARL, PERM + "reset", List.of(
+            new Section("limbo", Material.ENDER_PEARL, PERM + "reset", "reset", List.of(
                 SettingField.text("limbo.platform-block", 48, DialogMenu::validateBlock),
                 SettingField.number("limbo.platform-radius", 1, 32, 1),
                 SettingField.number("limbo.platform-height", -32, 300, 1),
                 SettingField.choice("limbo.game-mode", GameMode.values()))),
-            new Section("backups", Material.CHEST, PERM + "backup", List.of(
+            new Section("backups", Material.CHEST, PERM + "backup", "reset", List.of(
                 SettingField.bool("backups.enabled"),
                 SettingField.number("backups.keep", 0, 50, 1),
                 SettingField.text("backups.folder", 128, value -> value.isBlank() ? "menu.invalid-text" : null))),
-            new Section("display", Material.OAK_SIGN, PERM + "reload", List.of(
+            new Section("display", Material.OAK_SIGN, PERM + "reload", "main", List.of(
+                SettingField.bool("scoreboard.enabled"),
                 SettingField.bool("scoreboard.enabled-by-default"),
-                SettingField.number("scoreboard.update-interval", 1, 100, 1)))
+                SettingField.number("scoreboard.update-interval", 1, 100, 1),
+                SettingField.bool("worlds.locator-bar")))
         );
+    }
+
+    private Section section(String id) {
+        return this.sections().stream().filter(section -> section.id().equals(id)).findFirst().orElseThrow();
     }
 
     private static @Nullable String validateNonNegativeNumber(String value) {
@@ -196,24 +205,16 @@ public final class DialogMenu {
     private void openMain(Player player) {
         List<ActionButton> buttons = new ArrayList<>();
         if (player.hasPermission(PERM + "reset")) {
-            buttons.add(this.button(this.text("button.reset-now-menu"), null, (response, audience) -> this.openResetNow(player)));
+            buttons.add(this.button(this.text("button.reset-menu"), this.text("tooltip.reset-menu"), (response, audience) -> this.openResetMenu(player)));
         }
-        if (player.hasPermission(PERM + "goal")) {
-            buttons.add(this.button(this.text("button.goal"), null, (response, audience) -> this.openGoal(player)));
+        if (player.hasPermission(PERM + "goal") || player.hasPermission(PERM + "deaths") || player.hasPermission("magicreset.manhunt")) {
+            buttons.add(this.button(this.text("button.game-menu"), this.text("tooltip.game-menu"), (response, audience) -> this.openGameMenu(player)));
         }
         if (player.hasPermission(PERM + "timer")) {
-            buttons.add(this.button(this.text("button.timer-control"), null, (response, audience) -> this.openTimerControl(player)));
+            buttons.add(this.button(this.text("button.timer"), this.text("tooltip.timer"), (response, audience) -> this.openTimer(player)));
         }
-        if (player.hasPermission("magicreset.manhunt")) {
-            buttons.add(this.button(this.text("button.manhunt"), null, (response, audience) -> this.openManhuntUnsafe(player)));
-        }
-        if (player.hasPermission(PERM + "autoreset")) {
-            buttons.add(this.button(this.text("button.autoreset"), null, (response, audience) -> this.openAutoReset(player)));
-        }
-        for (Section section : this.sections()) {
-            if (player.hasPermission(section.permission())) {
-                buttons.add(this.button(this.text("button." + section.id()), null, (response, audience) -> this.openSection(player, section)));
-            }
+        if (player.hasPermission(PERM + "reload")) {
+            buttons.add(this.button(this.text("button.display"), this.text("tooltip.display"), (response, audience) -> this.openSection(player, this.section("display"))));
         }
         if (buttons.isEmpty()) {
             this.openInfoUnsafe(player);
@@ -235,6 +236,93 @@ public final class DialogMenu {
             .canCloseWithEscape(true)
             .build();
         this.show(player, base, DialogType.multiAction(buttons).columns(2).exitAction(this.closeButton()).build());
+    }
+
+    /** Everything about resetting: reset now, seed, worlds, schedule, backups and what happens on a reset. */
+    private void openResetMenu(Player player) {
+        List<ActionButton> buttons = new ArrayList<>();
+        buttons.add(this.button(this.text("button.reset-now-menu"), null, (response, audience) -> this.openResetNow(player)));
+        for (String id : List.of("seed", "worlds")) {
+            this.sectionButton(buttons, player, id);
+        }
+        if (player.hasPermission(PERM + "autoreset")) {
+            buttons.add(this.button(this.text("button.autoreset"), null, (response, audience) -> this.openAutoReset(player)));
+        }
+        for (String id : List.of("backups", "players", "limbo", "reset")) {
+            this.sectionButton(buttons, player, id);
+        }
+        this.submenu(player, Material.TNT, "title.reset-menu", this.text("body.reset-menu", Placeholder.unparsed("worlds", this.game.resetWorldList())), buttons, "main");
+    }
+
+    /** What is played: the mode presets, the goal, the death rules and the manhunt. */
+    private void openGameMenu(Player player) {
+        List<ActionButton> buttons = new ArrayList<>();
+        if (player.hasPermission(PERM + "goal") && player.hasPermission(PERM + "timer")) {
+            buttons.add(this.button(this.text("button.mode-speedrun"), this.text("tooltip.mode-speedrun"), (response, audience) -> this.applyMode(player, "speedrun")));
+            buttons.add(this.button(this.text("button.mode-free"), this.text("tooltip.mode-free"), (response, audience) -> this.applyMode(player, "free")));
+        }
+        if (player.hasPermission("magicreset.manhunt")) {
+            buttons.add(this.button(this.text("button.manhunt"), this.text("tooltip.mode-manhunt"), (response, audience) -> this.openManhuntUnsafe(player)));
+        }
+        if (player.hasPermission(PERM + "goal")) {
+            buttons.add(this.button(this.text("button.goal"), null, (response, audience) -> this.openGoal(player)));
+        }
+        this.sectionButton(buttons, player, "deaths");
+        this.submenu(player, Material.DRAGON_EGG, "title.game-menu", this.text("body.game-menu",
+            Placeholder.component("mode", this.text("mode." + this.currentMode())), this.game.goalPlaceholder()), buttons, "main");
+    }
+
+    /** "speedrun", "manhunt" or "free" depending on the settings. */
+    private String currentMode() {
+        if (this.settings().manhunt().enabled()) {
+            return "manhunt";
+        }
+        return this.settings().timer().enabled() || !this.plugin.goals().goal().isNone() ? "speedrun" : "free";
+    }
+
+    /** One click presets: free play = no timer, no goal, no manhunt; speedrun = timer and a goal. */
+    private void applyMode(Player player, String mode) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        values.put("manhunt.enabled", false);
+        if (mode.equals("free")) {
+            values.put("timer.enabled", false);
+            values.put("goal.type", GoalType.NONE.name());
+            values.put("goal.target", "");
+            values.put("deaths.mode", DeathMode.OFF.name());
+        } else {
+            values.put("timer.enabled", true);
+            if (this.plugin.goals().goal().isNone()) {
+                values.put("goal.type", GoalType.BEAT_GAME.name());
+                values.put("goal.target", "");
+            }
+        }
+        this.plugin.setConfigValues(values);
+        this.plugin.manhunt().onModeChanged();
+        this.messages().send(player, "menu.mode-set", Placeholder.component("mode", this.text("mode." + mode)));
+        this.openGameMenu(player);
+    }
+
+    private void sectionButton(List<ActionButton> buttons, Player player, String id) {
+        Section section = this.section(id);
+        if (player.hasPermission(section.permission())) {
+            buttons.add(this.button(this.text("button." + id), null, (response, audience) -> this.openSection(player, section)));
+        }
+    }
+
+    private void submenu(Player player, Material icon, String titleKey, Component body, List<ActionButton> buttons, String parent) {
+        DialogBase base = DialogBase.builder(this.text(titleKey))
+            .body(List.of(this.icon(icon, body)))
+            .canCloseWithEscape(true)
+            .build();
+        this.show(player, base, DialogType.multiAction(buttons).columns(2).exitAction(this.backButton(player, parent)).build());
+    }
+
+    private void openParent(Player player, String parent) {
+        switch (parent) {
+            case "reset" -> this.openResetMenu(player);
+            case "game" -> this.openGameMenu(player);
+            default -> this.openMain(player);
+        }
     }
 
     private Component statusText(Player player) {
@@ -275,7 +363,7 @@ public final class DialogMenu {
         if (buttons.isEmpty()) {
             this.show(player, base, DialogType.notice(this.closeButton()));
         } else {
-            this.show(player, base, DialogType.multiAction(buttons).exitAction(this.backButton(player)).build());
+            this.show(player, base, DialogType.multiAction(buttons).exitAction(this.backButton(player, "main")).build());
         }
     }
 
@@ -289,7 +377,7 @@ public final class DialogMenu {
         for (SettingField field : section.fields()) {
             inputs.add(this.input(field, config));
         }
-        this.form(player, section.icon(), "title." + section.id(), this.text("body." + section.id()), inputs, section.permission(), response -> {
+        this.form(player, section.icon(), "title." + section.id(), this.text("body." + section.id()), inputs, section.permission(), section.parent(), response -> {
             Map<String, Object> values = new LinkedHashMap<>();
             for (SettingField field : section.fields()) {
                 if (!this.read(player, field, response, config, values)) {
@@ -410,16 +498,27 @@ public final class DialogMenu {
 
     private void openResetNow(Player player) {
         Settings.Reset reset = this.settings().reset();
-        List<DialogInput> inputs = List.of(
-            this.textInput("seed", this.text("input.seed"), "", 64),
-            this.slider("countdown", this.text("input.countdown"), 0, 120, 1, reset.countdown()),
-            this.slider("limbo", this.text("input.limbo-countdown"), 0, 120, 1, reset.limboCountdown())
-        );
-        this.form(player, Material.TNT, "title.reset-now", this.text("body.reset-now", Placeholder.unparsed("worlds", this.game.resetWorldList())),
-            inputs, PERM + "reset", this.text("button.reset-now"), response -> {
+        List<DialogInput> inputs = new ArrayList<>();
+        inputs.add(this.textInput("seed", this.text("input.seed"), "", 64));
+        for (GameWorlds.Dimension dimension : GameWorlds.Dimension.values()) {
+            if (this.plugin.worlds().isEnabled(dimension)) {
+                inputs.add(DialogInput.bool("reset_" + dimension.name().toLowerCase(Locale.ROOT),
+                    this.text("input.reset-" + dimension.name().toLowerCase(Locale.ROOT))).initial(true).build());
+            }
+        }
+        inputs.add(this.slider("countdown", this.text("input.countdown"), 0, 120, 1, reset.countdown()));
+        inputs.add(this.slider("limbo", this.text("input.limbo-countdown"), 0, 120, 1, reset.limboCountdown()));
+        this.form(player, Material.TNT, "title.reset-now", this.text("body.reset-now"), inputs, PERM + "reset", "reset",
+            this.text("button.reset-now"), response -> {
+                Set<GameWorlds.Dimension> selection = EnumSet.noneOf(GameWorlds.Dimension.class);
+                for (GameWorlds.Dimension dimension : GameWorlds.Dimension.values()) {
+                    if (this.plugin.worlds().isEnabled(dimension) && boolOf(response, "reset_" + dimension.name().toLowerCase(Locale.ROOT), true)) {
+                        selection.add(dimension);
+                    }
+                }
                 String seed = response.getText("seed");
                 String error = this.game.requestReset(seed == null || seed.isBlank() ? null : seed.trim(),
-                    intOf(response, "countdown", reset.countdown()), intOf(response, "limbo", reset.limboCountdown()));
+                    intOf(response, "countdown", reset.countdown()), intOf(response, "limbo", reset.limboCountdown()), selection);
                 if (error != null) {
                     this.messages().send(player, error);
                 }
@@ -431,17 +530,29 @@ public final class DialogMenu {
     // Timer control
     // ---------------------------------------------------------------------------------------------------------
 
-    private void openTimerControl(Player player) {
+    /** One timer screen: switch it on/off, control it and change every timer setting. */
+    private void openTimer(Player player) {
+        Section section = this.section("timer");
+        FileConfiguration config = this.plugin.getConfig();
+        List<DialogInput> inputs = new ArrayList<>();
+        inputs.add(this.textInput("set_time", this.text("input.timer-set"), "", 16));
+        for (SettingField field : section.fields()) {
+            inputs.add(this.input(field, config));
+        }
         List<ActionButton> buttons = new ArrayList<>();
-        buttons.add(this.timerButton(player, "button.timer-start", () -> this.timers.startAll(this.participants())));
-        buttons.add(this.timerButton(player, "button.timer-pause", this.timers::pauseAll));
-        buttons.add(this.timerButton(player, "button.timer-resume", this.timers::resumeAll));
-        buttons.add(this.timerButton(player, "button.timer-reset", this.timers::resetAll));
-        buttons.add(this.button(this.text("button.timer-set"), null, (response, audience) -> {
+        buttons.add(this.button(this.text("button.save"), null, (response, audience) -> {
             if (!player.hasPermission(PERM + "timer")) {
                 return;
             }
-            String raw = response.getText("set");
+            Map<String, Object> values = new LinkedHashMap<>();
+            for (SettingField field : section.fields()) {
+                if (!this.read(player, field, response, config, values)) {
+                    this.openTimer(player);
+                    return;
+                }
+            }
+            this.plugin.setConfigValues(values);
+            String raw = response.getText("set_time");
             if (raw != null && !raw.isBlank()) {
                 Duration time = Durations.parse(raw);
                 if (time == null) {
@@ -449,24 +560,26 @@ public final class DialogMenu {
                 } else {
                     this.timers.setAll(time.toMillis(), this.participants());
                     this.game.saveAsync();
-                    this.messages().send(player, "timer.set", Placeholder.unparsed("time", this.game.formatPrecise(time.toMillis())));
                 }
             }
-            this.openTimerControl(player);
+            this.messages().send(player, "menu.saved");
+            this.openTimer(player);
         }));
-        Section timerSection = this.sections().getFirst();
-        buttons.add(this.button(this.text("button.timer"), null, (response, audience) -> this.openSection(player, timerSection)));
+        buttons.add(this.timerButton(player, "button.timer-start", () -> this.timers.startAll(this.participants())));
+        buttons.add(this.timerButton(player, "button.timer-pause", this.timers::pauseAll));
+        buttons.add(this.timerButton(player, "button.timer-resume", this.timers::resumeAll));
+        buttons.add(this.timerButton(player, "button.timer-reset", this.timers::resetAll));
         RunTimer timer = this.timers.displayed(player);
-        Component body = this.text("body.timer-control",
+        Component body = this.text(this.settings().timer().enabled() ? "body.timer" : "body.timer-off",
             Placeholder.unparsed("time", this.settings().timer().display(timer.millis(this.timers.mode()))),
             Placeholder.unparsed("state", timer.state().name().toLowerCase(Locale.ROOT)),
             Placeholder.unparsed("mode", this.timers.mode().name()));
-        DialogBase base = DialogBase.builder(this.text("title.timer-control"))
+        DialogBase base = DialogBase.builder(this.text("title.timer"))
             .body(List.of(this.icon(Material.CLOCK, body)))
-            .inputs(List.of(this.textInput("set", this.text("input.timer-set"), "", 16)))
+            .inputs(inputs)
             .canCloseWithEscape(true)
             .build();
-        this.show(player, base, DialogType.multiAction(buttons).columns(2).exitAction(this.backButton(player)).build());
+        this.show(player, base, DialogType.multiAction(buttons).columns(2).exitAction(this.backButton(player, "main")).build());
     }
 
     private ActionButton timerButton(Player player, String labelKey, Runnable action) {
@@ -475,7 +588,7 @@ public final class DialogMenu {
                 action.run();
                 this.game.saveAsync();
             }
-            this.openTimerControl(player);
+            this.openTimer(player);
         });
     }
 
@@ -512,7 +625,7 @@ public final class DialogMenu {
                 this.saveGoalOptions(response, config, goal);
                 this.messages().send(player, "menu.saved");
             }
-            this.openMain(player);
+            this.openGameMenu(player);
         }));
         List<DialogInput> inputs = List.of(
             this.slider("amount", this.text("input.goal-amount"), 1, 64, 1, goal.amount()),
@@ -524,7 +637,7 @@ public final class DialogMenu {
             .inputs(inputs)
             .canCloseWithEscape(true)
             .build();
-        this.show(player, base, DialogType.multiAction(buttons).columns(2).exitAction(this.backButton(player)).build());
+        this.show(player, base, DialogType.multiAction(buttons).columns(2).exitAction(this.backButton(player, "game")).build());
     }
 
     private void saveGoalOptions(DialogResponseView response, Settings.GoalSettings config, Goal goal) {
@@ -599,6 +712,8 @@ public final class DialogMenu {
             case BREAK_BLOCK -> Material.DIAMOND_PICKAXE;
             case OBTAIN_ITEM -> Material.DIAMOND;
             case ADVANCEMENT -> Material.KNOWLEDGE_BOOK;
+            case FIND_BIOME -> Material.FILLED_MAP;
+            case FIND_STRUCTURE -> Material.RECOVERY_COMPASS;
             default -> Material.COMPASS;
         };
     }
@@ -661,7 +776,7 @@ public final class DialogMenu {
             .inputs(inputs)
             .canCloseWithEscape(true)
             .build();
-        this.show(player, base, DialogType.multiAction(buttons).columns(2).exitAction(this.backButton(player)).build());
+        this.show(player, base, DialogType.multiAction(buttons).columns(2).exitAction(this.backButton(player, "reset")).build());
     }
 
     private boolean saveAutoReset(Player player, DialogResponseView response, AutoResetScheduler scheduler) {
@@ -755,7 +870,7 @@ public final class DialogMenu {
             .inputs(inputs)
             .canCloseWithEscape(true)
             .build();
-        this.show(player, base, DialogType.multiAction(buttons).columns(2).exitAction(this.backButton(player)).build());
+        this.show(player, base, DialogType.multiAction(buttons).columns(2).exitAction(this.backButton(player, "game")).build());
     }
 
     private void saveManhunt(Player player, DialogResponseView response, Settings.Manhunt config) {
@@ -796,12 +911,13 @@ public final class DialogMenu {
         boolean apply(DialogResponseView response);
     }
 
-    private void form(Player player, Material icon, String titleKey, Component body, List<DialogInput> inputs, String permission, Submit submit) {
-        this.form(player, icon, titleKey, body, inputs, permission, this.text("button.save"), submit);
+    private void form(Player player, Material icon, String titleKey, Component body, List<DialogInput> inputs, String permission,
+                      String parent, Submit submit) {
+        this.form(player, icon, titleKey, body, inputs, permission, parent, this.text("button.save"), submit);
     }
 
     private void form(Player player, Material icon, String titleKey, Component body, List<DialogInput> inputs, String permission,
-                      Component submitLabel, Submit submit) {
+                      String parent, Component submitLabel, Submit submit) {
         ActionButton save = this.button(submitLabel, null, (response, audience) -> {
             if (!player.hasPermission(permission)) {
                 this.messages().send(player, "menu.no-permission");
@@ -809,7 +925,7 @@ public final class DialogMenu {
             }
             if (submit.apply(response)) {
                 this.messages().send(player, "menu.saved");
-                this.openMain(player);
+                this.openParent(player, parent);
             }
         });
         DialogBase base = DialogBase.builder(this.text(titleKey))
@@ -817,7 +933,7 @@ public final class DialogMenu {
             .inputs(inputs)
             .canCloseWithEscape(true)
             .build();
-        this.show(player, base, DialogType.multiAction(List.of(save)).exitAction(this.backButton(player)).build());
+        this.show(player, base, DialogType.multiAction(List.of(save)).exitAction(this.backButton(player, parent)).build());
     }
 
     /** An item next to a text, used as the header of every screen. */
@@ -863,8 +979,8 @@ public final class DialogMenu {
             .build();
     }
 
-    private ActionButton backButton(Player player) {
-        return this.button(this.text("button.back"), null, (response, audience) -> this.openMain(player));
+    private ActionButton backButton(Player player, String parent) {
+        return this.button(this.text("button.back"), null, (response, audience) -> this.openParent(player, parent));
     }
 
     private ActionButton closeButton() {

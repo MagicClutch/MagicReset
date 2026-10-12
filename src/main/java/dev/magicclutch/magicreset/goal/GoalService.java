@@ -18,6 +18,8 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
 import org.bukkit.advancement.Advancement;
+import org.bukkit.block.Biome;
+import org.bukkit.generator.structure.Structure;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
@@ -216,14 +218,39 @@ public final class GoalService implements Listener {
      * Inventory based goals are polled, which covers every way of obtaining an item (pickup, crafting,
      * smelting, trading, commands, ...).
      */
-    public void pollInventories() {
+    /**
+     * Goals that depend on what a player has or where a player is are polled every half second: items (covers
+     * pickup, crafting, smelting, trading, ...), biomes and structures.
+     */
+    public void poll() {
         Goal current = this.goal();
-        if (current.type() != GoalType.OBTAIN_ITEM) {
-            return;
-        }
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            if (this.canProgress.test(player) && this.count(player, current) >= current.amount()) {
-                this.onComplete.accept(player);
+        switch (current.type()) {
+            case OBTAIN_ITEM -> {
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (this.canProgress.test(player) && this.count(player, current) >= current.amount()) {
+                        this.onComplete.accept(player);
+                    }
+                }
+            }
+            case FIND_BIOME -> {
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (this.canProgress.test(player) && current.matches(player.getWorld().getBiome(player.getLocation()).getKey())) {
+                        this.onComplete.accept(player);
+                    }
+                }
+            }
+            case FIND_STRUCTURE -> {
+                Structure structure = current.target() == null ? null : Registry.STRUCTURE.get(current.target());
+                if (structure == null) {
+                    return;
+                }
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (this.canProgress.test(player) && player.getWorld().hasStructureAt(player.getLocation(), structure)) {
+                        this.onComplete.accept(player);
+                    }
+                }
+            }
+            default -> {
             }
         }
     }
@@ -240,6 +267,17 @@ public final class GoalService implements Listener {
             count += cursor.getAmount();
         }
         return count;
+    }
+
+    /** "minecraft:village_plains" -> "Village Plains". */
+    public static String readable(NamespacedKey key) {
+        StringBuilder out = new StringBuilder();
+        for (String word : key.getKey().replace('/', ' ').split("_| ")) {
+            if (!word.isEmpty()) {
+                out.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1)).append(' ');
+            }
+        }
+        return out.toString().trim();
     }
 
     public static NamespacedKey dimensionKey(GameWorlds.Dimension dimension) {
@@ -263,6 +301,8 @@ public final class GoalService implements Listener {
                 yield entity != null && entity.isAlive() ? null : "goal.invalid-entity";
             }
             case ENTER_DIMENSION -> target.equals(OVERWORLD) || target.equals(NETHER) || target.equals(END) ? null : "goal.invalid-dimension";
+            case FIND_BIOME -> Registry.BIOME.get(target) != null ? null : "goal.invalid-biome";
+            case FIND_STRUCTURE -> Registry.STRUCTURE.get(target) != null ? null : "goal.invalid-structure";
             case ADVANCEMENT -> Bukkit.getAdvancement(target) != null ? null : "goal.invalid-advancement";
             case BREAK_BLOCK -> {
                 Material material = Registry.MATERIAL.get(target);
@@ -303,6 +343,12 @@ public final class GoalService implements Listener {
                 yield entity == null ? Component.text(target.asString()) : Component.translatable(entity.translationKey());
             }
             case ENTER_DIMENSION -> this.messages.get().get("dimension." + target.getKey().replace('_', '-'));
+            case FIND_BIOME -> {
+                Biome biome = Registry.BIOME.get(target);
+                yield biome == null ? Component.text(target.asString()) : Component.translatable(biome.translationKey());
+            }
+            // structures have no translated name in the game, so the key is made readable
+            case FIND_STRUCTURE -> Component.text(readable(target));
             case ADVANCEMENT -> {
                 Advancement advancement = Bukkit.getAdvancement(target);
                 if (advancement == null) {
