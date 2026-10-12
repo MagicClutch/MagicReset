@@ -8,6 +8,10 @@ reset:
   # Seconds before everybody is moved to the limbo, and in the limbo once the new world is ready.
   countdown: 5
   limbo-countdown: 5
+  # Start a new run on its own: OFF, DEATH (a death ends the run; with shared lives the last one),
+  # GOAL (goal reached / manhunt decided) or BOTH. auto-delay = seconds until then.
+  auto: 'OFF'
+  auto-delay: 10
   # What happens to every player when a new run starts.
   player:
     clear-inventory: true
@@ -73,8 +77,6 @@ deaths:
   # OFF = deaths are only counted, HARDCORE = the first death ends the run, SHARED_LIVES = everybody shares the lives
   mode: 'OFF'
   shared-lives: 3
-  # Seconds after a failed run until a new one starts, -1 = never.
-  reset-after: 10
 
 manhunt:
   # Targets run, everybody else hunts them (/manhunt). The goal above is what the targets have to do.
@@ -89,4 +91,4 @@ sidebar:
   enabled: true
 
 # Do not change: used to update this file when MagicReset changes it.
-config-version: 2
+config-version: 3

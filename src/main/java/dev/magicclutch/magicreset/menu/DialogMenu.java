@@ -3,6 +3,7 @@ package dev.magicclutch.magicreset.menu;
 import dev.magicclutch.magicreset.MagicReset;
 import dev.magicclutch.magicreset.config.Messages;
 import dev.magicclutch.magicreset.config.Settings;
+import dev.magicclutch.magicreset.game.AutoResetOn;
 import dev.magicclutch.magicreset.game.DeathMode;
 import dev.magicclutch.magicreset.game.GameManager;
 import dev.magicclutch.magicreset.game.SeedMode;
@@ -72,6 +73,9 @@ public final class DialogMenu {
         new String[] {"sidebar.enabled", "reload"},
         new String[] {"worlds.locator-bar", "locatorbar"});
 
+    private static final SettingField AUTO_RESET = SettingField.choice("reset.auto", AutoResetOn.values());
+    private static final SettingField AUTO_RESET_DELAY = SettingField.number("reset.auto-delay", 0, 60, 1);
+
     /** A screen of plain settings. */
     private record Section(String id, String permission, String parent, List<SettingField> fields) {
     }
@@ -117,7 +121,6 @@ public final class DialogMenu {
             new Section("deaths", PERM + "deaths", "main", List.of(
                 SettingField.choice("deaths.mode", DeathMode.values()),
                 SettingField.number("deaths.shared-lives", 1, 50, 1),
-                SettingField.number("deaths.reset-after", -1, 600, 1),
                 SettingField.bool("timer.pause-while-dead"))),
             new Section("worlds", PERM + "worlds", "main", List.of(
                 SettingField.bool("worlds.nether"),
@@ -446,6 +449,8 @@ public final class DialogMenu {
         inputs.add(this.slider("countdown", this.text("input.countdown"), 0, 60, 1, reset.countdown()));
         inputs.add(this.slider("limbo", this.text("input.limbo-countdown"), 0, 60, 1, reset.limboCountdown()));
         inputs.add(DialogInput.bool("backups", this.text("field.backups.enabled")).initial(this.settings().backups().enabled()).build());
+        inputs.add(this.input(AUTO_RESET, this.plugin.getConfig()));
+        inputs.add(this.input(AUTO_RESET_DELAY, this.plugin.getConfig()));
 
         List<ActionButton> buttons = List.of(
             this.button(this.text("button.reset-now"), null, (response, audience) -> {
@@ -491,6 +496,8 @@ public final class DialogMenu {
         values.put("reset.countdown", intOf(response, "countdown", reset.countdown()));
         values.put("reset.limbo-countdown", intOf(response, "limbo", reset.limboCountdown()));
         values.put("backups.enabled", boolOf(response, "backups", this.settings().backups().enabled()));
+        values.put(AUTO_RESET.path(), option(response, AUTO_RESET.inputName(), reset.auto().name()));
+        values.put(AUTO_RESET_DELAY.path(), intOf(response, AUTO_RESET_DELAY.inputName(), reset.autoDelay()));
         this.plugin.setConfigValues(values);
     }
 

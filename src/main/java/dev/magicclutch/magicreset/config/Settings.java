@@ -1,5 +1,6 @@
 package dev.magicclutch.magicreset.config;
 
+import dev.magicclutch.magicreset.game.AutoResetOn;
 import dev.magicclutch.magicreset.game.DeathMode;
 import dev.magicclutch.magicreset.game.SeedMode;
 import dev.magicclutch.magicreset.goal.Goal;
@@ -70,6 +71,8 @@ public final class Settings {
         boolean clearScoreboardScores,
         boolean preload,
         int preloadDelay,
+        AutoResetOn auto,
+        int autoDelay,
         PlayerReset player
     ) {
     }
@@ -98,16 +101,16 @@ public final class Settings {
         }
     }
 
-    public record GoalSettings(Goal goal, boolean spectatorOnFinish, int resetAfter) {
+    public record GoalSettings(Goal goal, boolean spectatorOnFinish) {
     }
 
-    public record Deaths(DeathMode mode, int sharedLives, boolean spectatorOnFail, int resetAfter) {
+    public record Deaths(DeathMode mode, int sharedLives, boolean spectatorOnFail) {
     }
 
     public record AutoReset(List<Integer> warnings) {
     }
 
-    public record Manhunt(boolean enabled, int targetLives, int headStart, boolean hunterCompass, int resetAfter) {
+    public record Manhunt(boolean enabled, int targetLives, int headStart, boolean hunterCompass) {
     }
 
     public record Scoreboard(boolean enabled, boolean enabledByDefault, int updateInterval) {
@@ -181,6 +184,8 @@ public final class Settings {
             config.getBoolean("reset.clear-scoreboard-scores", false),
             config.getBoolean("reset.preload", false),
             Math.max(0, config.getInt("reset.preload-delay", 15)),
+            this.enumValue(AutoResetOn.class, config.getString("reset.auto"), AutoResetOn.OFF, "reset.auto"),
+            Math.clamp(config.getInt("reset.auto-delay", 10), 0, 600),
             new PlayerReset(
                 config.getBoolean("reset.player.clear-inventory", true),
                 config.getBoolean("reset.player.clear-ender-chest", true),
@@ -225,15 +230,13 @@ public final class Settings {
 
         this.goal = new GoalSettings(
             this.readGoal(config),
-            config.getBoolean("goal.spectator-on-finish", false),
-            config.getInt("goal.reset-after", -1)
+            config.getBoolean("goal.spectator-on-finish", false)
         );
 
         this.deaths = new Deaths(
             this.enumValue(DeathMode.class, config.getString("deaths.mode"), DeathMode.OFF, "deaths.mode"),
             Math.max(1, config.getInt("deaths.shared-lives", 3)),
-            config.getBoolean("deaths.spectator-on-fail", true),
-            config.getInt("deaths.reset-after", 10)
+            config.getBoolean("deaths.spectator-on-fail", true)
         );
 
         List<Integer> warnings = new ArrayList<>();
@@ -250,8 +253,7 @@ public final class Settings {
             config.getBoolean("manhunt.enabled", false),
             Math.clamp(config.getInt("manhunt.target-lives", 1), 1, 100),
             Math.clamp(config.getInt("manhunt.head-start", 30), 0, 600),
-            config.getBoolean("manhunt.hunter-compass", true),
-            config.getInt("manhunt.reset-after", -1)
+            config.getBoolean("manhunt.hunter-compass", true)
         );
         this.scoreboard = new Scoreboard(
             config.getBoolean("sidebar.enabled", true),

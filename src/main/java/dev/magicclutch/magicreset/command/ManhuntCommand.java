@@ -87,8 +87,6 @@ final class ManhuntCommand {
             .then(Commands.literal("compass").requires(admin())
                 .then(Commands.literal("on").executes(ctx -> this.setValue(ctx, "manhunt.hunter-compass", true)))
                 .then(Commands.literal("off").executes(ctx -> this.setValue(ctx, "manhunt.hunter-compass", false))))
-            .then(Commands.literal("resetafter").requires(admin()).then(Commands.argument("seconds", IntegerArgumentType.integer(-1, 3600))
-                .executes(ctx -> this.setValue(ctx, "manhunt.reset-after", IntegerArgumentType.getInteger(ctx, "seconds")))))
             // the targets' goal and the timer are the same settings as in /magicreset
             .then(this.shared.goalNode())
             .then(this.shared.timerNode());
@@ -167,7 +165,6 @@ final class ManhuntCommand {
             Placeholder.unparsed("lives", Integer.toString(config.targetLives())),
             Placeholder.unparsed("headstart", Integer.toString(config.headStart())),
             Placeholder.unparsed("compass", config.hunterCompass() ? "on" : "off"),
-            Placeholder.unparsed("resetafter", config.resetAfter() < 0 ? "off" : config.resetAfter() + "s"),
             this.game.goalPlaceholder());
         for (Component line : this.messages().list("manhunt.status", resolvers)) {
             sender(ctx).sendMessage(line);

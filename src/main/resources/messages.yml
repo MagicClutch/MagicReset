@@ -5,7 +5,7 @@
 # ======================================================================================
 
 # Raised when the menu texts change; an older file gets the new menu: texts (other texts are kept).
-version: 4
+version: 5
 
 prefix: '<gradient:#a855f7:#6366f1><bold>MagicReset</bold></gradient> <dark_gray>»</dark_gray> '
 
@@ -291,7 +291,6 @@ menu:
     deaths:
       mode: 'On death'
       shared-lives: 'Shared lives'
-      reset-after: 'New run after a failed one (s, -1 = never)'
     worlds:
       nether: 'Nether is part of the game'
       end: 'End is part of the game'
@@ -306,6 +305,8 @@ menu:
     backups:
       enabled: 'Back up the old worlds'
     reset:
+      auto: 'Auto reset'
+      auto-delay: 'Auto reset after (s)'
       player:
         clear-inventory: 'Clear inventory'
         clear-ender-chest: 'Clear ender chest'
@@ -339,6 +340,9 @@ menu:
     random: 'Random'
     fixed: 'Fixed'
     'off': 'Off'
+    death: 'On death'
+    goal: 'On goal reached'
+    both: 'On death or goal'
     hardcore: 'Hardcore'
     shared-lives: 'Shared lives'
     digital: '1:02:03.45'
@@ -394,7 +398,7 @@ manhunt:
     - '<gray>Targets: <white><targets></white> <dark_gray>(<lives> lives)'
     - '<gray>Hunters online: <white><hunters>'
     - '<gray>Targets win with: <white><goal>'
-    - '<gray>Head start: <white><headstart>s</white> <dark_gray>|</dark_gray> compass: <white><compass></white> <dark_gray>|</dark_gray> auto reset: <white><resetafter>'
+    - '<gray>Head start: <white><headstart>s</white> <dark_gray>|</dark_gray> compass: <white><compass></white>'
   help:
     - '<gradient:#ef4444:#f97316><bold>Magic Manhunt</bold></gradient> <dark_gray>- commands (alias /mm)'
     - '<white>/manhunt on|off <gray>- manhunt mode'
@@ -402,7 +406,7 @@ manhunt:
     - '<white>/manhunt hunter|spectator \<players>'
     - '<white>/manhunt start <gray>[seed] - new world, the hunt begins'
     - '<white>/manhunt goal ... <gray>- what the targets have to do (nether, end, dragon, beat, item, ...)'
-    - '<white>/manhunt lives|headstart|compass|resetafter ...'
+    - '<white>/manhunt lives|headstart|compass ...'
     - '<white>/manhunt timer ... <gray>- timer settings incl. format'
 
 backup:

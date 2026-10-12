@@ -1021,7 +1021,7 @@ public final class GameManager {
                     online.setGameMode(GameMode.SPECTATOR);
                 }
             }
-            this.scheduleFollowUpReset(config.resetAfter());
+            this.autoReset(this.settings().reset().auto().onGoal());
         } else {
             RunTimer timer = this.timers.timer(player.getUniqueId());
             if (timer.state() == RunTimer.State.IDLE) {
@@ -1045,7 +1045,7 @@ public final class GameManager {
                 this.outcome = Outcome.COMPLETED;
                 this.timers.endRun();
                 this.messages().send(Bukkit.getServer(), "goal.completed.all");
-                this.scheduleFollowUpReset(config.resetAfter());
+                this.autoReset(this.settings().reset().auto().onGoal());
             }
         }
         this.saveAsync();
@@ -1078,7 +1078,7 @@ public final class GameManager {
             online.showTitle(title);
             online.playSound(winner == ManhuntService.Winner.TARGETS ? COMPLETE_SOUND : FAIL_SOUND);
         }
-        this.scheduleFollowUpReset(this.settings().manhunt().resetAfter());
+        this.autoReset(this.settings().reset().auto().onGoal());
         this.saveAsync();
     }
 
@@ -1117,6 +1117,10 @@ public final class GameManager {
         this.deaths++;
         switch (config.mode()) {
             case OFF -> {
+                // "auto reset on death": without death rules any death ends the run
+                if (this.settings().reset().auto().onDeath()) {
+                    this.fail(player);
+                }
             }
             case HARDCORE -> this.fail(player);
             case SHARED_LIVES -> {
@@ -1148,13 +1152,15 @@ public final class GameManager {
                 online.setGameMode(GameMode.SPECTATOR);
             }
         }
-        this.scheduleFollowUpReset(this.settings().deaths().resetAfter());
+        this.autoReset(this.settings().reset().auto().onDeath());
     }
 
-    private void scheduleFollowUpReset(int seconds) {
-        if (seconds < 0) {
+    /** reset.auto: a new run after reset.auto-delay seconds when the run ended this way. */
+    private void autoReset(boolean wanted) {
+        if (!wanted) {
             return;
         }
+        int seconds = this.settings().reset().autoDelay();
         // one tick later: this can be called from inside PlayerDeathEvent
         Bukkit.getScheduler().runTask(this.plugin, () -> {
             if (this.phase == Phase.RUNNING && this.outcome != Outcome.NONE) {

@@ -48,7 +48,7 @@ a sidebar and a locator bar switch.
   compass to point it at the nearest target (`/mm compass on|off`).
 - **Targets win** by reaching the goal first (`/mm goal ...` – nether, end, dragon, Beat Minecraft, item,
   advancement, ...). **Hunters win** when every target lost all lives (`/mm lives <n>`).
-- The end shows a big title with the winner and the time; `/mm resetafter <seconds>` resets automatically.
+- The end shows a big title with the winner and the time; with auto reset "on goal" a new run starts by itself.
 - Manhunt times have their own leaderboard.
 
 ## Modes
@@ -110,10 +110,10 @@ Every setting is on exactly one screen:
 
 | Button | What is there |
 | --- | --- |
-| ⟳ Reset | Reset now, seed (empty = random), which worlds, countdowns, show seed, backups |
+| ⟳ Reset | Reset now, seed (empty = random), which worlds, countdowns, show seed, backups, auto reset (off / on death / on goal / both) |
 | ⚑ Mode & Goal | Speedrun / Free play / Manhunt, the goal (with search) and the manhunt settings |
 | ⌚ Timer | Start / pause / reset, on/off, real or in-game time, when it starts, format |
-| ☠ Death settings | Hardcore / shared lives, new run after a failed one, stop the timer while dead |
+| ☠ Death settings | Hardcore / shared lives, stop the timer while dead |
 | ☀ Worlds | Nether/end, world type, difficulty, structures, world border, game rules |
 | ☺ Players on reset | What is cleared when a new run starts |
 | Sidebar / Locator bar | On/off with one click |
