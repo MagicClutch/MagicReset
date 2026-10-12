@@ -119,6 +119,10 @@ timer:
   # In INDIVIDUAL scope each player's timer stops while that player is offline.
   # Also /magicreset timer stop-when-empty on|off.
   stop-when-empty: false
+  # true: a player's death stops the timer until they respawn (the death screen does not count).
+  # In GLOBAL scope the shared timer waits until every dead player has respawned.
+  # Also /magicreset timer pause-while-dead on|off.
+  pause-while-dead: false
   # IGT only: stop counting while no player is in the game worlds (independent of stop-when-empty).
   igt-pause-when-empty: true
   # Time format in the action bar, sidebar and leaderboard. "auto" uses style + decimals below,

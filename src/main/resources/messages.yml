@@ -132,6 +132,8 @@ timer:
   format-invalid: '<prefix><red>Use auto or a pattern with H (hours), m (minutes), s (seconds), S (fractions), e.g. <white>HH:mm:ss</white> or <white>mm:ss.SSS</white>.'
   stop-when-empty-on: '<prefix><green>The timer now stops while nobody is playing.'
   stop-when-empty-off: '<prefix><gray>The timer keeps running while nobody is playing.'
+  pause-while-dead-on: '<prefix><green>The timer now stops while a player is dead and continues on respawn.'
+  pause-while-dead-off: '<prefix><gray>The timer keeps running while a player is dead.'
   status: '<prefix><gray>Timer <white><state></white> <dark_gray>|</dark_gray> RTA <white><rta></white> <dark_gray>|</dark_gray> IGT <white><igt></white> <dark_gray>|</dark_gray> showing <white><mode></white>, <white><scope></white>, start <white><trigger>'
 
 hud:
@@ -305,6 +307,7 @@ menu:
       scope: 'Timer for'
       start: 'Timer starts'
       stop-when-empty: 'Stop while nobody is playing'
+      pause-while-dead: 'Stop while dead'
       igt-pause-when-empty: 'IGT: stop while nobody is in the game'
       format: 'Format - e.g. HH:mm:ss, mm:ss.SSS or auto'
       style: 'Auto format style'
@@ -509,7 +512,7 @@ help:
   - '<white>/magicreset resume <gray>[countdown]'
   - '<white>/magicreset seed <gray>[random | fixed \<seed> | copy | show on|off]'
   - '<white>/magicreset backup <gray>[on|off] - keep a copy of every reset world'
-  - '<white>/magicreset timer <gray>[start|pause|resume|reset|set \<time>|mode|scope|start-on-move|stop-when-empty]'
+  - '<white>/magicreset timer <gray>[start|pause|resume|reset|set \<time>|mode|scope|start-on-move|stop-when-empty|pause-while-dead]'
   - '<white>/magicreset goal <gray>[none|beat|dragon|kill|dimension|advancement|break|item]'
   - '<white>/magicreset deaths <gray>[off|hardcore|lives \<n>]'
   - '<white>/magicreset worlds <gray>[nether|end on|off] - which worlds a reset deletes'

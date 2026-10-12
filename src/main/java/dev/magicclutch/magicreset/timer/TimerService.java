@@ -28,13 +28,16 @@ public final class TimerService {
     /** {@code true} once the run has ended (goal completed or failed); no new timers start. */
     private boolean ended;
 
-    public record TimerSettings(TimerMode mode, TimerScope scope, StartTrigger trigger, boolean igtPauseWhenEmpty, boolean stopWhenEmpty) {
+    public record TimerSettings(TimerMode mode, TimerScope scope, StartTrigger trigger, boolean igtPauseWhenEmpty, boolean stopWhenEmpty,
+                                boolean pauseWhileDead) {
     }
 
     /** Global timer stopped because nobody was playing (timer.stop-when-empty). */
     private boolean globalAutoPaused;
     /** Individual timers stopped because their player left (timer.stop-when-empty). */
     private final Set<UUID> autoPaused = new HashSet<>();
+    /** Players whose death stopped a timer that runs again when they respawn (timer.pause-while-dead). */
+    private final Set<UUID> deadPaused = new HashSet<>();
 
     public TimerService(Supplier<TimerSettings> settings) {
         this.settings = settings;
@@ -59,6 +62,7 @@ public final class TimerService {
         this.armed = false;
         this.globalAutoPaused = false;
         this.autoPaused.clear();
+        this.deadPaused.clear();
         this.started = false;
         this.paused = false;
         this.ended = false;
@@ -234,11 +238,36 @@ public final class TimerService {
         }
     }
 
+    /** timer.pause-while-dead: a runner died, their timer (or the shared one) stops until the respawn. */
+    public void onDeath(Player player) {
+        if (!this.settings().pauseWhileDead() || !this.armed || this.ended || this.paused) {
+            return;
+        }
+        boolean global = this.scope() == TimerScope.GLOBAL;
+        RunTimer timer = global ? this.global : this.timer(player.getUniqueId());
+        // the shared timer may already be stopped by somebody else's death; it waits for every dead player
+        if (timer.pause() || (global && !this.deadPaused.isEmpty())) {
+            this.deadPaused.add(player.getUniqueId());
+        }
+    }
+
+    public void onRespawn(Player player) {
+        if (!this.deadPaused.remove(player.getUniqueId()) || this.paused || this.ended) {
+            return;
+        }
+        if (this.scope() == TimerScope.INDIVIDUAL) {
+            this.timer(player.getUniqueId()).start();
+        } else if (this.deadPaused.isEmpty()) {
+            this.global.start();
+        }
+    }
+
     public void pauseAll() {
         this.paused = true;
         // an explicit pause replaces the automatic one, only an explicit resume continues
         this.globalAutoPaused = false;
         this.autoPaused.clear();
+        this.deadPaused.clear();
         this.global.pause();
         this.individual.values().forEach(RunTimer::pause);
     }
@@ -247,6 +276,7 @@ public final class TimerService {
         this.paused = false;
         this.globalAutoPaused = false;
         this.autoPaused.clear();
+        this.deadPaused.clear();
         if (this.global.state() == RunTimer.State.PAUSED) {
             this.global.start();
         }

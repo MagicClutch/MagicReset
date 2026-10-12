@@ -123,6 +123,7 @@ public final class DialogMenu {
                 SettingField.choice("timer.scope", TimerScope.values()),
                 SettingField.choice("timer.start", StartTrigger.values()),
                 SettingField.bool("timer.stop-when-empty"),
+                SettingField.bool("timer.pause-while-dead"),
                 SettingField.bool("timer.igt-pause-when-empty"),
                 SettingField.text("timer.format", 32, value -> value.equalsIgnoreCase("auto") || TimeFormat.isValidPattern(value) ? null : "timer.format-invalid"),
                 SettingField.choice("timer.style", TimeFormat.Style.values()),

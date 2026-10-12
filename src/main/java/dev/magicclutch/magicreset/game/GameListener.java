@@ -69,6 +69,7 @@ public final class GameListener implements Listener {
         Bukkit.getScheduler().runTask(this.plugin, () -> {
             if (player.isOnline()) {
                 this.game.afterRespawn(player);
+                this.timers.onRespawn(player);
             }
         });
     }
@@ -76,6 +77,9 @@ public final class GameListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onDeath(PlayerDeathEvent event) {
         this.game.onDeath(event.getPlayer());
+        if (this.game.isActiveRunner(event.getPlayer())) {
+            this.timers.onDeath(event.getPlayer());
+        }
     }
 
     // --- timer start on first input -------------------------------------------------------------------------

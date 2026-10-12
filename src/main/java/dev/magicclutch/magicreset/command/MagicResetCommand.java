@@ -308,6 +308,9 @@ public final class MagicResetCommand {
             .then(Commands.literal("stop-when-empty")
                 .then(Commands.literal("on").executes(ctx -> this.setStopWhenEmpty(ctx, true)))
                 .then(Commands.literal("off").executes(ctx -> this.setStopWhenEmpty(ctx, false))))
+            .then(Commands.literal("pause-while-dead")
+                .then(Commands.literal("on").executes(ctx -> this.setPauseWhileDead(ctx, true)))
+                .then(Commands.literal("off").executes(ctx -> this.setPauseWhileDead(ctx, false))))
             .then(Commands.literal("start-on-move")
                 .then(Commands.literal("on").executes(ctx -> this.setTrigger(ctx, StartTrigger.FIRST_INPUT)))
                 .then(Commands.literal("off").executes(ctx -> this.setTrigger(ctx, StartTrigger.AUTO))))
@@ -388,6 +391,12 @@ public final class MagicResetCommand {
     private int setStopWhenEmpty(CommandContext<CommandSourceStack> ctx, boolean enabled) {
         this.plugin.setConfigValue("timer.stop-when-empty", enabled);
         this.messages().send(sender(ctx), enabled ? "timer.stop-when-empty-on" : "timer.stop-when-empty-off");
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int setPauseWhileDead(CommandContext<CommandSourceStack> ctx, boolean enabled) {
+        this.plugin.setConfigValue("timer.pause-while-dead", enabled);
+        this.messages().send(sender(ctx), enabled ? "timer.pause-while-dead-on" : "timer.pause-while-dead-off");
         return Command.SINGLE_SUCCESS;
     }
 

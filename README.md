@@ -146,6 +146,7 @@ Main command `/magicreset`, alias `/mr`. `/reset` is registered as a shortcut fo
 | `/mr timer format <pattern\|auto>` | Time format, e.g. `HH:mm:ss`, `mm:ss.SSS`, `H:mm:ss.SS`. |
 | `/mr timer start-on-move on\|off` | Start the timer only on the first movement (same as trigger first-input). |
 | `/mr timer stop-when-empty on\|off` | Stop the timer while nobody is playing, continue when someone is back. |
+| `/mr timer pause-while-dead on\|off` | Stop the timer while a player is dead, continue on respawn. |
 | `/mr goal` | Show the goal and progress. |
 | `/mr goal none\|beat\|dragon` | No goal / Beat Minecraft (leave the End through the exit portal) / kill the Ender Dragon. |
 | `/mr worlds [nether\|end on\|off]` | Show which worlds a reset deletes, choose nether/end. |
