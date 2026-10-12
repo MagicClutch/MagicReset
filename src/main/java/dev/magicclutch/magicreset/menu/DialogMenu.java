@@ -190,7 +190,7 @@ public final class DialogMenu {
         buttons.add(this.button(this.text("button.leaderboard"), null, (response, audience) -> this.openInfoUnsafe(player)));
 
         DialogBase base = DialogBase.builder(this.text("title.main"))
-            .body(List.of(this.header(this.statusText(player))))
+            .body(List.of(this.header(this.statusText())))
             .canCloseWithEscape(true)
             .build();
         this.show(player, base, DialogType.multiAction(buttons).columns(2).exitAction(this.closeButton()).build());
@@ -261,12 +261,10 @@ public final class DialogMenu {
         }
     }
 
-    private Component statusText(Player player) {
-        RunTimer timer = this.timers.displayed(player);
-        String time = this.settings().timer().enabled() ? this.settings().timer().display(timer.millis(this.timers.mode())) : "-";
+    private Component statusText() {
+        // no running time here: a screen is a snapshot, the time would jump on every click (the action bar has it)
         return this.text("status",
             Placeholder.unparsed("run", Integer.toString(this.game.run())),
-            Placeholder.unparsed("time", time),
             Placeholder.component("mode", this.text("mode." + this.currentMode())),
             this.game.goalPlaceholder());
     }
@@ -290,7 +288,7 @@ public final class DialogMenu {
             }));
         }
         DialogBase base = DialogBase.builder(this.text("title.info"))
-            .body(List.of(this.header(this.statusText(player)), this.header(board)))
+            .body(List.of(this.header(this.statusText()), this.header(board)))
             .canCloseWithEscape(true)
             .build();
         if (buttons.isEmpty()) {

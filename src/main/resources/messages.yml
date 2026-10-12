@@ -5,7 +5,7 @@
 # ======================================================================================
 
 # Raised when the menu texts change; an older file gets the new menu: texts (other texts are kept).
-version: 3
+version: 4
 
 prefix: '<gradient:#a855f7:#6366f1><bold>MagicReset</bold></gradient> <dark_gray>»</dark_gray> '
 
@@ -206,7 +206,7 @@ menu:
     worlds: '<green><bold>☀ Worlds'
     players: '<aqua><bold>☺ Players on reset'
     manhunt: '<gradient:#ef4444:#f97316><bold>⚔ Manhunt</bold></gradient>'
-  status: '<white>Run <yellow>#<run></yellow>   <gray>⌚</gray> <yellow><time></yellow><newline><gray>⚑</gray> <white><mode></white> <dark_gray>·</dark_gray> <white><goal></white>'
+  status: '<white>Run <yellow>#<run></yellow></white><newline><gray>⚑</gray> <white><mode></white> <dark_gray>·</dark_gray> <white><goal></white>'
   body:
     reset: '<white>Seed, worlds and countdowns.</white><newline><gray>Reset now uses and saves them, Save only saves them.'
     game: '<white>Mode: <yellow><mode></yellow>   Goal: <yellow><goal></yellow></white><newline><gray>The goal counts in every mode: in a manhunt the targets have to reach it.'
