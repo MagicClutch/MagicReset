@@ -87,6 +87,10 @@ public final class GameManager {
         PAUSE
     }
 
+    /** The small dimensions first, the overworld last so its spawn search runs right after it. */
+    private static final List<GameWorlds.Dimension> GENERATION_ORDER = List.of(
+        GameWorlds.Dimension.END, GameWorlds.Dimension.NETHER, GameWorlds.Dimension.OVERWORLD);
+    private static final long GENERATION_GAP_TICKS = 40L;
     private static final String DATA_FILE = "data.yml";
     private static final int LIMBO_VIEW_DISTANCE = 3;
     private static final Sound TICK_SOUND = Sound.sound(Key.key("minecraft:block.note_block.hat"), Sound.Source.MASTER, 1f, 1f);
@@ -391,7 +395,6 @@ public final class GameManager {
         }
 
         this.showBossBar(this.messages().get("bossbar.deleting"), 0.15f, BossBar.Color.PURPLE);
-        List<Path> leftovers = this.worlds.leftoverFolders();
         Settings.Backups backups = this.settings().backups();
         Path backupRoot = backups.enabled() ? this.backupRoot() : null;
         Path backup = this.newBackupFolder(backupRoot, this.run);
@@ -409,13 +412,6 @@ public final class GameManager {
                     WorldFiles.prune(backupRoot, backups.keep());
                 } catch (IOException e) {
                     this.plugin.getLogger().warning("Could not finish the backup " + backup + ": " + e.getMessage());
-                }
-            }
-            for (Path leftover : leftovers) {
-                try {
-                    this.worlds.wipeLeftover(leftover);
-                } catch (IOException e) {
-                    this.plugin.getLogger().warning("Could not delete the unused folder " + leftover + ": " + e.getMessage());
                 }
             }
         }, this.io).whenComplete((ignored, error) -> Bukkit.getScheduler().runTask(this.plugin, () -> {
@@ -533,19 +529,19 @@ public final class GameManager {
             if (error != null) {
                 this.plugin.getLogger().log(Level.SEVERE, "Failed to delete the old worlds", error);
             }
-            // nether and end of the new run, one per tick
+            // nether and end of the new run, with a pause so the second world does not wait for the first one's chunks
             Bukkit.getScheduler().runTask(this.plugin, () -> {
                 if (this.worlds.isEnabled(GameWorlds.Dimension.NETHER)) {
                     this.worlds.loadOrCreate(GameWorlds.Dimension.NETHER, this.seed);
                 }
-                Bukkit.getScheduler().runTask(this.plugin, () -> {
+                Bukkit.getScheduler().runTaskLater(this.plugin, () -> {
                     if (this.worlds.isEnabled(GameWorlds.Dimension.END)) {
                         this.worlds.loadOrCreate(GameWorlds.Dimension.END, this.seed);
                     }
                     this.cleaningUp = false;
                     this.logGameWorlds();
                     this.saveAsync();
-                });
+                }, GENERATION_GAP_TICKS);
             });
         })), 10L);
     }
@@ -581,23 +577,26 @@ public final class GameManager {
     }
 
     private void generate(long newSeed, int limboCountdown, int index) {
-        GameWorlds.Dimension[] dimensions = GameWorlds.Dimension.values();
-        if (index >= dimensions.length) {
+        if (index >= GENERATION_ORDER.size()) {
             this.findSpawn(newSeed, limboCountdown);
             return;
         }
-        GameWorlds.Dimension dimension = dimensions[index];
+        GameWorlds.Dimension dimension = GENERATION_ORDER.get(index);
+        long delay = 1L;
         if (this.worlds.isEnabled(dimension) && this.resetSelection.contains(dimension)) {
             this.showBossBar(this.messages().get("bossbar.generating",
                 Placeholder.component("dimension", this.messages().get("dimension." + dimension.path().replace('_', '-')))),
-                0.25f + 0.5f * index / dimensions.length, BossBar.Color.BLUE);
+                0.25f + 0.5f * index / GENERATION_ORDER.size(), BossBar.Color.BLUE);
             if (this.worlds.loadOrCreate(dimension, newSeed) == null && dimension == GameWorlds.Dimension.OVERWORLD) {
                 this.abortReset("Could not create the overworld");
                 return;
             }
+            // creating a world generates its spawn chunks on the main thread; the next world waits until the
+            // chunk workers are done with this one, otherwise its spawn chunk queues behind them and the
+            // server freezes
+            delay = GENERATION_GAP_TICKS;
         }
-        // one dimension per tick keeps the server responsive
-        Bukkit.getScheduler().runTask(this.plugin, () -> this.generate(newSeed, limboCountdown, index + 1));
+        Bukkit.getScheduler().runTaskLater(this.plugin, () -> this.generate(newSeed, limboCountdown, index + 1), delay);
     }
 
     private void findSpawn(long newSeed, int limboCountdown) {
@@ -1303,7 +1302,7 @@ public final class GameManager {
         }
     }
 
-    /** "magicreset:overworld, minecraft:the_nether, minecraft:the_end" – the worlds a reset deletes. */
+    /** "magicreset:overworld, magicreset:the_nether, magicreset:the_end" – the worlds a reset deletes. */
     public String resetWorldList() {
         List<String> keys = new ArrayList<>();
         for (GameWorlds.Dimension dimension : GameWorlds.Dimension.values()) {

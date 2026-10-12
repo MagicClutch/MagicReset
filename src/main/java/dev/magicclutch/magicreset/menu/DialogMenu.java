@@ -139,8 +139,7 @@ public final class DialogMenu {
                 SettingField.bool("worlds.bonus-chest"),
                 SettingField.bool("worlds.hardcore-hearts"),
                 SettingField.text("worlds.world-border", 9, DialogMenu::validateNonNegativeNumber),
-                SettingField.map("worlds.game-rules"),
-                SettingField.bool("worlds.use-main-nether-end"))),
+                SettingField.map("worlds.game-rules"))),
             new Section("seed", PERM + "seed", "main", List.of(
                 SettingField.choice("seed.mode", SeedMode.values()),
                 SettingField.text("seed.fixed", 64, null),

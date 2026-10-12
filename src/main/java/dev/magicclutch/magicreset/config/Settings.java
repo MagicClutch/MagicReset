@@ -30,7 +30,6 @@ public final class Settings {
 
     public record Worlds(
         String namespace,
-        boolean useMainNetherEnd,
         boolean nether,
         boolean end,
         WorldType type,
@@ -148,7 +147,6 @@ public final class Settings {
         }
         this.worlds = new Worlds(
             namespace,
-            config.getBoolean("worlds.use-main-nether-end", true),
             config.getBoolean("worlds.nether", true),
             config.getBoolean("worlds.end", true),
             this.worldType(config.getString("worlds.type", "NORMAL")),

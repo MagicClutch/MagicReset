@@ -324,7 +324,6 @@ menu:
       hardcore-hearts: 'Hardcore hearts'
       world-border: 'World border size - e.g. 5000 (0 = none)'
       game-rules: 'Game rules - e.g. keep_inventory=true'
-      use-main-nether-end: 'Use the server''s real nether/end (restart)'
     seed:
       mode: 'Seed'
       fixed: 'Fixed seed - e.g. 12345 or glacier'

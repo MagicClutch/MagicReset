@@ -82,28 +82,27 @@ Since 26.1 every dimension lives inside the main level folder (`level-name` in `
 ```
 world/
 ├── dimensions/
-│   ├── minecraft/
-│   │   ├── overworld/    <- server's main overworld: cannot be unloaded while the server runs, never touched
-│   │   ├── the_nether/   <- game nether: deleted and regenerated on every reset
-│   │   └── the_end/      <- game end:    deleted and regenerated on every reset (dragon fight starts fresh)
-│   └── magicreset/
+│   ├── minecraft/        <- the server's own worlds: never unloaded, recreated or deleted by the plugin
+│   │   └── overworld/
+│   └── magicreset/       <- everything of the game
 │       ├── overworld/    <- game overworld (alternates with overworld_b, the preloaded next one)
 │       ├── overworld_b/
+│       ├── the_nether/   <- game nether: deleted and regenerated on every reset
+│       ├── the_end/      <- game end:    deleted and regenerated on every reset (dragon fight starts fresh)
 │       └── limbo/        <- waiting room, kept
 ├── players/              <- player data, never deleted (players are reset via the API)
 └── data/                 <- shared data, never deleted
 ```
 
-- **Nether and End are the server's real dimensions** (`minecraft:the_nether`, `minecraft:the_end`) and are really
-  deleted on every reset (`worlds.use-main-nether-end: true`, the default). Set it to `false` to use separate
-  plugin dimensions instead.
-- **The overworld is a plugin world** (`magicreset:overworld`). The server's main overworld can never be unloaded
-  while the server runs, so it cannot be reset without a restart. Players never see it.
+- **All game worlds are plugin worlds** (`magicreset:overworld`, `magicreset:the_nether`, `magicreset:the_end`).
+  The server's own dimensions are never touched: the main overworld cannot be unloaded while the server runs,
+  and recreating the main nether/end at runtime can break the level data so that the server does not start.
+  Players never see the server's own worlds.
 - `/magicreset worlds` lists exactly which worlds a reset deletes (with their folders) and where you are;
   `/magicreset worlds nether|end on|off` chooses whether nether/end are part of the game.
 - A `paper-world.yml` inside a game dimension folder is kept, so per-world Paper settings survive resets.
 
-Nether portals and end portals of the game worlds are linked to each other (coordinate scaling, portal
+Nether portals and end portals of the game worlds are linked to each other by the plugin (coordinate scaling, portal
 search/creation and the obsidian platform work like in vanilla).
 
 ## Menu

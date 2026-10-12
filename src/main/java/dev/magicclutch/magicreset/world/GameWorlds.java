@@ -27,11 +27,10 @@ import org.jspecify.annotations.Nullable;
 /**
  * Creates, loads, unloads and wipes the game worlds.
  *
- * <p>The game overworld is always a plugin world ({@code <namespace>:overworld}) because the server's main
- * overworld can never be unloaded while the server runs. Nether and end are by default the server's real
- * dimensions {@code minecraft:the_nether} and {@code minecraft:the_end} (these can be unloaded), so the vanilla
- * end with its dragon fight is really reset. With {@code worlds.use-main-nether-end: false} plugin worlds are
- * used for them as well.</p>
+ * <p>All game worlds are plugin worlds ({@code <namespace>:overworld}, {@code :the_nether}, {@code :the_end}).
+ * The server's own dimensions ({@code minecraft:*}) are never unloaded, recreated or deleted: the main overworld
+ * cannot be unloaded at all, and recreating the main nether/end at runtime can leave the level's shared data
+ * (world_gen_settings.dat) in a state the server refuses to start with.</p>
  *
  * <p>Since 26.1 every dimension lives inside the main level folder:
  * {@code <level-name>/dimensions/<namespace>/<path>/} containing {@code region/}, {@code entities/}, {@code poi/},
@@ -74,18 +73,15 @@ public final class GameWorlds {
     private final Logger logger;
     private final Supplier<Settings> settings;
     private final String namespace;
-    private final boolean mainNetherEnd;
     private String overworldSlot = OVERWORLD_SLOTS.getFirst();
 
     /**
-     * @param namespace     fixed for the lifetime of the plugin instance; changing it requires a restart
-     * @param mainNetherEnd use minecraft:the_nether / minecraft:the_end as game dimensions (restart to change)
+     * @param namespace fixed for the lifetime of the plugin instance; changing it requires a restart
      */
-    public GameWorlds(Logger logger, Supplier<Settings> settings, String namespace, boolean mainNetherEnd) {
+    public GameWorlds(Logger logger, Supplier<Settings> settings, String namespace) {
         this.logger = logger;
         this.settings = settings;
         this.namespace = namespace;
-        this.mainNetherEnd = mainNetherEnd;
     }
 
     /** Folder name of the overworld of the current run. */
@@ -145,10 +141,6 @@ public final class GameWorlds {
         WorldFiles.wipe(normalized, KEPT_FILES);
     }
 
-    public boolean usesMainNetherEnd() {
-        return this.mainNetherEnd;
-    }
-
     public String namespace() {
         return this.namespace;
     }
@@ -156,9 +148,6 @@ public final class GameWorlds {
     public NamespacedKey key(Dimension dimension) {
         if (dimension == Dimension.OVERWORLD) {
             return new NamespacedKey(this.namespace, this.overworldSlot);
-        }
-        if (this.mainNetherEnd) {
-            return NamespacedKey.minecraft(dimension.path());
         }
         return new NamespacedKey(this.namespace(), dimension.path());
     }
@@ -203,10 +192,6 @@ public final class GameWorlds {
         NamespacedKey key = world.getKey();
         for (Dimension dimension : Dimension.values()) {
             if (this.key(dimension).equals(key)) {
-                // a deselected main nether/end is just the vanilla dimension again, not part of the game
-                if (this.mainNetherEnd && !this.isEnabled(dimension)) {
-                    return null;
-                }
                 return dimension;
             }
         }
@@ -242,30 +227,6 @@ public final class GameWorlds {
     public Path folder(Dimension dimension) {
         NamespacedKey key = this.key(dimension);
         return this.dimensionsRoot().resolve(key.getNamespace()).resolve(key.getKey());
-    }
-
-    /**
-     * Plugin nether/end folders from before {@code use-main-nether-end} was switched on; deleted with the next
-     * reset so they do not waste disk space.
-     */
-    public List<Path> leftoverFolders() {
-        if (!this.mainNetherEnd) {
-            return List.of();
-        }
-        Path root = this.dimensionsRoot().resolve(this.namespace());
-        return List.of(root.resolve(Dimension.NETHER.path()), root.resolve(Dimension.END.path()));
-    }
-
-    /** Deletes a folder returned by {@link #leftoverFolders()}. May run off the main thread. */
-    public void wipeLeftover(Path folder) throws IOException {
-        Path parent = folder.getParent();
-        boolean expected = parent != null && parent.getFileName().toString().equals(this.namespace)
-            && (folder.getFileName().toString().equals(Dimension.NETHER.path()) || folder.getFileName().toString().equals(Dimension.END.path()))
-            && !this.namespace.equals(NamespacedKey.MINECRAFT);
-        if (!expected) {
-            throw new IOException("Refusing to delete unexpected folder " + folder);
-        }
-        WorldFiles.wipe(folder, Set.of());
     }
 
     public boolean hasSavedData(Dimension dimension) {
@@ -309,15 +270,6 @@ public final class GameWorlds {
     }
 
     private WorldCreator creator(Dimension dimension) {
-        if (this.mainNetherEnd && dimension != Dimension.OVERWORLD) {
-            // the server's own names "<level>_nether" / "<level>_the_end" map to minecraft:the_nether / the_end
-            String level = Bukkit.getWorlds().getFirst().getName();
-            WorldCreator creator = new WorldCreator(level + (dimension == Dimension.NETHER ? "_nether" : "_the_end"));
-            if (!creator.key().equals(this.key(dimension))) {
-                throw new IllegalStateException("Unexpected key " + creator.key() + " for the main " + dimension.path());
-            }
-            return creator;
-        }
         return WorldCreator.ofKey(this.key(dimension));
     }
 

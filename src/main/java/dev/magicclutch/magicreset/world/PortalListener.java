@@ -22,7 +22,9 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityPortalEnterEvent;
+import org.bukkit.event.entity.EntityPortalEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.player.PlayerPortalEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.plugin.Plugin;
 import org.jspecify.annotations.Nullable;
@@ -94,6 +96,51 @@ public final class PortalListener implements Listener {
             return;
         }
         event.setTargetWorld(target);
+    }
+
+    /**
+     * Second line of defence: whatever chose the target before, a nether portal in a game world never leads out
+     * of the game. Vanilla searches/creates the exit portal in the world of the location set here.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onPlayerPortal(PlayerPortalEvent event) {
+        if (event.getCause() != PlayerTeleportEvent.TeleportCause.NETHER_PORTAL) {
+            return;
+        }
+        Location fixed = this.netherTarget(event.getFrom(), event.getTo());
+        if (fixed == null) {
+            event.setCancelled(true);
+        } else {
+            event.setTo(fixed);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onEntityPortal(EntityPortalEvent event) {
+        if (event.getPortalType() != PortalType.NETHER || event.getTo() == null) {
+            return;
+        }
+        Location fixed = this.netherTarget(event.getFrom(), event.getTo());
+        if (fixed == null) {
+            event.setCancelled(true);
+        } else {
+            event.setTo(fixed);
+        }
+    }
+
+    /** {@code to} if it already is the right game world, a corrected location, or {@code null} to cancel. */
+    private @Nullable Location netherTarget(Location from, Location to) {
+        GameWorlds.Dimension source = this.worlds.dimensionOf(from.getWorld());
+        if (source == null || this.worlds.isGameWorld(to.getWorld())) {
+            return to;
+        }
+        GameWorlds.Dimension wanted = source == GameWorlds.Dimension.NETHER ? GameWorlds.Dimension.OVERWORLD : GameWorlds.Dimension.NETHER;
+        World target = this.worlds.isEnabled(wanted) ? this.worlds.world(wanted) : null;
+        if (target == null) {
+            return null;
+        }
+        double scale = wanted == GameWorlds.Dimension.NETHER ? 1.0 / 8.0 : 8.0;
+        return new Location(target, from.getX() * scale, to.getY(), from.getZ() * scale, to.getYaw(), to.getPitch());
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
